@@ -31,7 +31,7 @@ Revoke-Obfuscation is the final hand-crafted product of these efforts.
 
 Purpose
 -------
-Revoke-Obfuscation is an open-source PowerShell v3.0+ framework for detecting obfuscated PowerShell commands and scripts at scale. It relies on PowerShell's AST (Abstract Syntax Tree) to rapidly extract thousands of features from any input PowerShell script and compare this feature vector against one of several pre-defined weighted feature vectors computed through an automated learning process conducted against a corpus of 408K+ PowerShell scripts. This full corpus can be downloaded from ([https://aka.ms/PowerShellCorpus](https://aka.ms/PowerShellCorpus)). The labeled corpus scripts used for this training phase have been aggregated in the Module directory.
+Revoke-Obfuscation is an open-source PowerShell v3.0+ framework for detecting obfuscated PowerShell commands and scripts at scale. It relies on PowerShell's AST (Abstract Syntax Tree) to rapidly extract thousands of features from any input PowerShell script and compare this feature vector against one of several pre-defined weighted feature vectors computed through an automated learning process conducted against a corpus of 408K+ PowerShell scripts. This full corpus can be downloaded from ([https://aka.ms/PowerShellCorpus](https://aka.ms/PowerShellCorpus)). Stay tuned for the publishing of the labeled data and the tooling used for training.
 
 Since Revoke-Obfuscation relies on feature extraction and comparison instead of pure IOCs or RegEx matching, it is more robust in its ability to identify unknown obfuscation techniques even when attackers attempt to subdue their obfuscation by padding it with unobfuscated script contents to overthrow basic checks like character frequency analysis.
 
