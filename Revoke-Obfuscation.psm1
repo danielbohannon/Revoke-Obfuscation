@@ -98,7 +98,7 @@ C:\PS> $obfResults = Get-Content -Path .\Demo\DBOdemo1.ps1 -Raw | Measure-RvoObf
 
 .EXAMPLE
 
-C:\PS> $obfResults = Get-WinEvent Microsoft-Windows-PowerShell/Operational | Get-RvoScriptBlock -Reduce -Unique | Measure-RvoObfuscation -Verbose -OutputToDisk
+C:\PS> $obfResults = Get-WinEvent Microsoft-Windows-PowerShell/Operational -FilterXPath {*[System[(EventID=4104)]]} | Get-RvoScriptBlock | Measure-RvoObfuscation -Verbose -OutputToDisk
 
 .NOTES
 
