@@ -15,6 +15,11 @@ Authors
 Daniel Bohannon ([@danielhbohannon](https://twitter.com/danielhbohannon))
 Lee Holmes ([@Lee_Homes](https://twitter.com/Lee_Holmes))
 
+Research
+--------
+Blog Post: ([https://www.fireeye.com/blog/threat-research/2017/07/revoke-obfuscation-powershell.html](https://www.fireeye.com/blog/threat-research/2017/07/revoke-obfuscation-powershell.html))
+White Paper: ([https://www.fireeye.com/content/dam/fireeye-www/blog/pdfs/revoke-obfuscation-report.pdf](https://www.fireeye.com/content/dam/fireeye-www/blog/pdfs/revoke-obfuscation-report.pdf))
+
 Background
 ----------
 In the Fall of 2016 and Spring of 2017, Daniel Bohannon ([@danielhbohannon](https://twitter.com/danielhbohannon)) released [Invoke-Obfuscation](https://github.com/danielbohannon/Invoke-Obfuscation) and [Invoke-CradleCrafter](https://github.com/danielbohannon/Invoke-CradleCrafter), two open-source PowerShell obfuscation frameworks. The goal of this research and these frameworks was to highlight the limitations of a purely signature-based approach to detecting attackers' usage of PowerShell. The core message to defenders has been to focus on detecting **Indicators of Obfuscation** in addition to known suspicious syntax.
