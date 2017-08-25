@@ -1107,27 +1107,24 @@ http://www.leeholmes.com/blog/
                         }
                     }
                 }
-                elseif ($Header.StartsWith('<?xml version=') -and $Header.Contains('<itemList generator="w32eventlogs"'))
+                elseif ($Header.StartsWith('{"preview":true'))
                 {
-                    # Handle MIR/HX event log audit file format.
-                    Write-Verbose "Parsing $curFileCount of $($inputFiles.Count) MIR/HX audit file(s) :: $($_.Name)"
-
-                    # MIR/HX audits need to have html entities decoded.
-                    Add-Type -AssemblyName System.Web
+                    # Handle Splunk JSON output
+                    Write-Verbose "Parsing $curFileCount of $($inputFiles.Count) Splunk query output file(s) :: $($_.Name)"
         
-                    # Query out script block logs (EID 4104) from input MIR/HX event log audit.
+                    # Query out script block logs (EID 4104) from input Splunk query output json file.
                     # Perform renaming so that structure matches that of [System.Diagnostics.Eventing.Reader.EventLogRecord] objects.
-                    [Object[]] $EventLogRecord = ([xml](Get-Content $auditfile)).ItemList.EventLogItem | Where-Object { $_.EID -eq 4104 } |  Select-Object `
-                        @{ Name = 'id'              ; Expression = { $_.EID } },
-                        @{ Name = 'TimeCreated'     ; Expression = { $_.GenTime } },
-                        @{ Name = 'LevelDisplayName'; Expression = { $_.Type } },
+                    [Object[]] $EventLogRecord = (Get-Content $_ | ConvertFrom-Json).result | Select-Object `
+                        @{ Name = 'id'              ; Expression = { $_.EventCode } },
+                        @{ Name = 'TimeCreated'     ; Expression = { $_.TimeCreated } },
+                        @{ Name = 'LevelDisplayName'; Expression = { $_.Level } },
                         @{ Name = 'Properties'      ; Expression = { `
                             @(
-                                @{ Value = ( $_.Message.Split("`n") | Select-Object -First 1 ).Split(' ()')[4] },
-                                @{ Value = ( $_.Message.Split("`n") | Select-Object -First 1 ).Split(' ()')[6] },
-                                # Two layers of html decoding for instances like &amp;quot; where the first decoding results in &quot; and the second decoding results in the final "
-                                @{ Value = ( $_.Message.Split("`n") | ForEach-Object { [System.Web.HttpUtility]::HtmlDecode([System.Web.HttpUtility]::HtmlDecode($_)) } | Select-Object -Skip 1 | Select-Object -SkipLast 4) -join "`n" },
-                                @{ Value = ( $_.Message.Split("`n") | Select-Object -Last 3 | Select-Object -First 1 ).Replace('ScriptBlock ID: ','').Trim() }
+                                @{ Value = $_.MessageNumber },
+                                @{ Value = $_.MessageTotal },
+                                @{ Value = $_.ScriptBlockText },
+                                @{ Value = $_.ScriptBlockId }
+
                             )
                         }
                     }
