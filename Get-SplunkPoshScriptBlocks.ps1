@@ -1,36 +1,35 @@
 <#
 Get-SplunkPoSHScriptBlocks
 Written by Troy Arwine & Kurt Falde
-Utilizes the Splunk REST API to query PowerShell Script Block logs and extract the data to a local JSON file
-This in turn can be utilized for further analysis
+Utilizes the Splunk REST API to query PowerShell Script Block logs and extract the data from them to a local JSON file
+This in turn can be utilized for further forensic analysis
 
-Instructions:
-Modify the 'earliest=-15m@m latest=now' section of the $search variable to change the timespan of events to query
-May need to modify the Splunk Query if your events are formatted different in your Splunk config
-Modify the url to your Splunk instance
-The REST API must be enabled on Splunk in order for this to function.  If you are seeing connection reset errors may be due to REST API
-not being enabled. 
-Try testing with a shorter / simpler query if not getting results
+Help:
+    Date/Time
+     Modify the 'earliest=-15m@m latest=now' section of the $search variable to change the timespan of events to query
+     Can also use something like 'earliest=10/19/2009:0:0:0 latest=10/27/2009:0:0:0' to control a time/date range for the query
+
+     Index
+     IF your PowerShell Logs are in their own index then specify an index name first to speed up the query
+
+     ScriptBlockTextLenght is what it sounds like. If you are having too many script blocks that are extremely short in nature you can try trimming based on length to increase performance
+     Or you could possibly whitelist them as well in Revoke-Obfuscation
+     ScriptBlockTextLength>100
+
+     Change the $url value to your local splunk instance
+
 #>
 
-$search = 'search sourcetype=XmlWinEventLog:Microsoft-Windows-Powershell/Operational EventCode=4104 earliest=-15m@m latest=now | sort 0 - _time | spath | spath Event.EventData.Data{@Name} | eval MessageNumber=mvindex(''Event.EventData.Data'',0) | eval MessageTotal=mvindex(''Event.EventData.Data'',1) | eval ScriptBlockText=mvindex(''Event.EventData.Data'',2) | eval ScriptBlockId=mvindex(''Event.EventData.Data'',3) | eval Path=mvindex(''Event.EventData.Data'',4) | table EventCode TimeCreated Level MessageNumber MessageTotal ScriptBlockText ScriptBlockId Path'
-$url = 'https://yoursplunkurl/services/search/jobs/export'
+$search = 'search index=PowerShellLogs sourcetype=XmlWinEventLog:Microsoft-Windows-Powershell/Operational EventCode=4104 earliest=-1m@m latest=now | spath output=Data path=Event.EventData.Data | fields EventCode TimeCreated Level Data | eval MessageNumber=mvindex(''Data'',0) | eval MessageTotal=mvindex(''Data'',1) | eval ScriptBlockText=mvindex(''Data'',2) | eval ScriptBlockId=mvindex(''Data'',3) | eval Path=mvindex(''Data'',3) | eval ScriptBlockTextLength=len(ScriptBlockText) | where ScriptBlockTextLength>100 | table EventCode TimeCreated Level MessageNumber MessageTotal ScriptBlockText ScriptBlockId Path | sort 0 - _time'
+$url = 'https://changetosplunkurl/services/search/jobs/export'
 $credential = get-credential
 $outfile = 'C:\temp\SplunkPoshScriptblocks-'+$(get-date -f yyyy-MM-dd-hh-mm)+'.json'
 
-# If you have a Splunk Server that is using a self-signed / untrusted cert you need this portion to ignore the cert error
-add-type @"
-    using System.Net;
-    using System.Security.Cryptography.X509Certificates;
-    public class TrustAllCertsPolicy : ICertificatePolicy {
-        public bool CheckValidationResult(
-            ServicePoint srvPoint, X509Certificate certificate,
-            WebRequest request, int certificateProblem) {
-            return true;
-        }
-    }
-"@
-[System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
+# This will allow for self-signed SSL certs to work
+[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls 
+
+
 $Body = @{
     search = $search
     output_mode = 'json'
