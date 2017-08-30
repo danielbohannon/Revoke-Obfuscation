@@ -999,6 +999,10 @@ C:\PS> Get-WinEvent -LogName "Microsoft-Windows-PowerShell/Operational" | Get-Rv
 
 C:\PS> Get-CSEventLogEntry -LogName Microsoft-Windows-PowerShell/Operational | Get-RvoScriptBlock
 
+.EXAMPLE
+
+C:\PS> Get-RvoScriptBlock -Helix ((Invoke-RestMethod -Method post -Uri $resource -Header $header -Body $body -ContentType "application/json") -split "`n" | ConvertFrom-Json)
+
 .NOTES
 
 This is a personal project developed by Daniel Bohannon and Lee Holmes while employees at MANDIANT, A FireEye Company and Microsoft, respectively.
@@ -1182,6 +1186,10 @@ http://www.leeholmes.com/blog/
             }
         }
         "Helix" {
+            # Use API to pull eventid=4104.
+            # Defeat the 1k event limitation using the "stream"="true" option in your request.
+            # Stream returns raw JSON which needs to be split by "`n" and convertfrom-json before providing to this function
+            
             # Parse out scriptblock text ID#
             $Helix.msg -match "\((\d+)\sof\s(\d+)\)"|Out-Null
             
