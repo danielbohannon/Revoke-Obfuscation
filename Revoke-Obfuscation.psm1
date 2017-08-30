@@ -1047,6 +1047,9 @@ http://www.leeholmes.com/blog/
         [PSTypeName("Microsoft.Management.Infrastructure.CimInstance#root/cimv2/Win32_NTLogEvent")]
         $CimInstance,
         
+        [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $false, ParameterSetName = 'Helix')]
+        $Helix,
+        
         [Parameter(Mandatory = $false)]
         [Switch]
         $Deep
@@ -1178,6 +1181,27 @@ http://www.leeholmes.com/blog/
                 }
             }
         }
+        "Helix" {
+            # Parse out scriptblock text ID#
+            $Helix.msg -match "\((\d+)\sof\s(\d+)\)"|Out-Null
+            
+            # Perform renaming so that structure matches that of [System.Diagnostics.Eventing.Reader.EventLogRecord] objects.
+            [Object[]] $EventLogRecord = $Helix | Select-Object `
+                @{ Name = 'id'              ; Expression = { [int]$_.eventid } },
+                @{ Name = 'TimeCreated'     ; Expression = { [datetime]$_.eventtime } },
+                @{ Name = 'LevelDisplayName'; Expression = { $_.severity } },
+                @{ Name = 'HostName'        ; Expression = { $_.hostname } },
+                @{ Name = 'Properties'      ; Expression = { `
+                    @(
+                        @{ Value = $matches[0] },
+                        @{ Value = $matches[1] },
+                        @{ Value = $_.info },
+                        @{ Value = $_.processid }
+                    )
+                }
+            }
+        }
+
     }
     
     Write-Verbose "Grouping and reassembling script blocks from the input $($EventLogRecord.Count) event log record(s)."
@@ -1187,6 +1211,7 @@ http://www.leeholmes.com/blog/
     $scriptBlockValuesToIgnoreForReduceSwitch += '$global:?'
     $scriptBlockValuesToIgnoreForReduceSwitch += 'prompt'
     $scriptBlockValuesToIgnoreForReduceSwitch += 'exit'
+    $scriptBlockValuesToIgnoreForReduceSwitch += 'cls'
     $scriptBlockValuesToIgnoreForReduceSwitch += '{ Set-StrictMode -Version 1; $_.ErrorCategory_Message }'
     $scriptBlockValuesToIgnoreForReduceSwitch += '{ Set-StrictMode -Version 1; $_.OriginInfo }'
     $scriptBlockValuesToIgnoreForReduceSwitch += '{ Set-StrictMode -Version 1; $_.PSMessageDetails }'
@@ -1234,12 +1259,14 @@ http://www.leeholmes.com/blog/
                 $timeCreated = [System.DateTime] $_.Group.TimeCreated[0]
                 $eid = [System.Uint16] $_.Group.Id[0]
                 $levelDisplayName = [System.String] $_.Group.LevelDisplayName[0]
+                $HostName = [System.String] $_.Group.HostName[0]
             }
             else
             {
                 $timeCreated = [System.DateTime] $_.Group.TimeCreated
                 $eid = [System.Uint16] $_.Group.Id
                 $levelDisplayName = [System.String] $_.Group.LevelDisplayName
+                $HostName = [System.String] $_.Group.HostName
             }
 
             $scriptBlockChunkCount = [System.Uint16] $_.Group.Count
@@ -1262,6 +1289,7 @@ http://www.leeholmes.com/blog/
                 ScriptBlockId         = [System.String] $scriptBlockId
                 TimeCreated           = [System.DateTime] $timeCreated
                 Id                    = [System.UInt16] $eid
+                HostName              = [System.String] $Hostname
                 LevelDisplayName      = [System.String] $levelDisplayName
                 Reassembled           = [System.Boolean] $reassembled
                 ScriptBlockChunkCount = [System.UInt16] $scriptBlockChunkCount
@@ -2211,6 +2239,11 @@ http://www.leeholmes.com/blog/
 
 # Get current directory of .ps1 script no matter the working directory.
 $scriptDir = Split-Path -Parent $myInvocation.MyCommand.Definition
+if (!$scriptDir)
+{
+    $scriptDir = (Get-Location).Path
+}
+
 
 # Set whitelist directory and content and regex whitelist files. All scripts located in this directory and content/regex in these files will be automatically whitelisted by Measure-RvoObfuscation cmdlet.
 $whitelistDir         = "$scriptDir\Whitelist\Scripts_To_Whitelist"
