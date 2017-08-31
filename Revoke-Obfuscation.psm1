@@ -29,7 +29,7 @@ Measure-RvoObfuscation orchestrates the feature vector extraction, whitelist com
 Revoke-Obfuscation Function: Measure-RvoObfuscation
 Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
-Required Dependencies: Check-Whitelist, Get-RvoFeatureVector, Measure-Vector, .\Requirements\CommandLine\ConvertToPowerShellExpression.ps1.ps1
+Required Dependencies: Check-Whitelist, Get-RvoFeatureVector, Measure-Vector, .\Requirements\CommandLine\ConvertToPowerShellExpression.ps1
 Optional Dependencies: None
 
 .DESCRIPTION
