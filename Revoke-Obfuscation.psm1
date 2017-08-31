@@ -1201,8 +1201,8 @@ http://www.leeholmes.com/blog/
                 @{ Name = 'HostName'        ; Expression = { $_.hostname } },
                 @{ Name = 'Properties'      ; Expression = { `
                     @(
-                        @{ Value = $matches[0] },
                         @{ Value = $matches[1] },
+                        @{ Value = $matches[2] },
                         @{ Value = $_.info },
                         @{ Value = $_.processid }
                     )
