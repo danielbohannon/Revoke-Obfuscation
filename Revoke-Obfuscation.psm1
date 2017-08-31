@@ -29,7 +29,7 @@ Measure-RvoObfuscation orchestrates the feature vector extraction, whitelist com
 Revoke-Obfuscation Function: Measure-RvoObfuscation
 Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
-Required Dependencies: Check-Whitelist, Get-RvoFeatureVector, Measure-Vector, .\Requirements\CommandLine\Convert-PowerShellCommandLine.ps1
+Required Dependencies: Check-Whitelist, Get-RvoFeatureVector, Measure-Vector, .\Requirements\CommandLine\ConvertToPowerShellExpression.ps1.ps1
 Optional Dependencies: None
 
 .DESCRIPTION
@@ -327,7 +327,7 @@ http://www.leeholmes.com/blog/
             if ($CommandLine.IsPresent)
             {
                 # Clean up the command line formatting for powershell.exe like decoding encoded commands, replacing -command "whole command goes here" with -command { whole command goes here }, etc.
-                $scriptContent = . $scriptDir\Requirements\CommandLine\Convert-PowerShellCommandLine.ps1 $scriptContent
+                $scriptContent = . $scriptDir\Requirements\CommandLine\ConvertToPowerShellExpression.ps1 $scriptContent
             }
             
             $counter++
