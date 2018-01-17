@@ -49,9 +49,13 @@ Installation
 ------------
 The source code for Revoke-Obfuscation is hosted at Github, and you may download, fork and review it from this repository (https://github.com/danielbohannon/Revoke-Obfuscation). Please report issues or feature requests through Github's bug tracker associated with this project.
 
+To install (from Github):
+
+	Import-Module .\Revoke-Obfuscation.psd1
+
 The source code can also be installed directly from the PowerShell Gallery via the following commands:
 
-To install:
+To install (from PowerShell Gallery):
 
 	Install-Module Revoke-Obfuscation
 	Import-Module Revoke-Obfuscation
