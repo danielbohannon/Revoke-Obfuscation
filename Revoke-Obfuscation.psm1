@@ -1001,7 +1001,7 @@ C:\PS> Get-CSEventLogEntry -LogName Microsoft-Windows-PowerShell/Operational | G
 
 .EXAMPLE
 
-C:\PS> Get-RvoScriptBlock -Helix ((Invoke-RestMethod -Method post -Uri $resource -Header $header -Body $body -ContentType "application/json") -split "`n" | ConvertFrom-Json)
+C:\PS> Get-RvoScriptBlock -Helix (tap search "class=ms_windows_powershell eventid=4104" InstanceID | ConvertFrom-Json)
 
 .NOTES
 
@@ -1186,12 +1186,9 @@ http://www.leeholmes.com/blog/
             }
         }
         "Helix" {
-            # Use API to pull eventid=4104.
-            # Defeat the 1k event limitation using the "stream"="true" option in your request.
-            # Stream returns raw JSON which needs to be split by "`n" and convertfrom-json before providing to this function
-            
-            # Parse out scriptblock text ID#
-            $Helix.msg -match "\((\d+)\sof\s(\d+)\)"|Out-Null
+            # Use API to query your instance for "class=ms_windows_powershell eventid=4104".
+            # Parsed field 'info' = EventLogRecord 'ScriptBlockText'
+            # Parsed field 'processid' = EventLogRecord 'ScriptBlockID'
             
             # Perform renaming so that structure matches that of [System.Diagnostics.Eventing.Reader.EventLogRecord] objects.
             [Object[]] $EventLogRecord = $Helix | Select-Object `
@@ -1199,12 +1196,14 @@ http://www.leeholmes.com/blog/
                 @{ Name = 'TimeCreated'     ; Expression = { [datetime]$_.eventtime } },
                 @{ Name = 'LevelDisplayName'; Expression = { $_.severity } },
                 @{ Name = 'HostName'        ; Expression = { $_.hostname } },
+                @{ Name = 'Instance'        ; Expression = { $_.instance } },
                 @{ Name = 'Properties'      ; Expression = { `
                     @(
-                        @{ Value = $matches[1] },
-                        @{ Value = $matches[2] },
+                        @{ Value = ([regex]::matches($_.msg,'\d+')).value[0] },
+                        @{ Value = ([regex]::matches($_.msg,'\d+')).value[1] },
                         @{ Value = $_.info },
-                        @{ Value = $_.processid }
+                        @{ Value = $_.processid },
+                        @{ Value = $_.filename }
                     )
                 }
             }
@@ -1267,14 +1266,16 @@ http://www.leeholmes.com/blog/
                 $timeCreated = [System.DateTime] $_.Group.TimeCreated[0]
                 $eid = [System.Uint16] $_.Group.Id[0]
                 $levelDisplayName = [System.String] $_.Group.LevelDisplayName[0]
-                $HostName = [System.String] $_.Group.HostName[0]
+                $hostname = [System.String] $_.Group.HostName[0]
+                $instance = [System.String] $_.Group.Instance[0]
             }
             else
             {
                 $timeCreated = [System.DateTime] $_.Group.TimeCreated
                 $eid = [System.Uint16] $_.Group.Id
                 $levelDisplayName = [System.String] $_.Group.LevelDisplayName
-                $HostName = [System.String] $_.Group.HostName
+                $hostname = [System.String] $_.Group.HostName
+                $instance = [System.String] $_.Group.Instance
             }
 
             $scriptBlockChunkCount = [System.Uint16] $_.Group.Count
@@ -1297,7 +1298,8 @@ http://www.leeholmes.com/blog/
                 ScriptBlockId         = [System.String] $scriptBlockId
                 TimeCreated           = [System.DateTime] $timeCreated
                 Id                    = [System.UInt16] $eid
-                HostName              = [System.String] $Hostname
+                HostName              = [System.String] $hostname
+                Instance              = [System.String] $instance
                 LevelDisplayName      = [System.String] $levelDisplayName
                 Reassembled           = [System.Boolean] $reassembled
                 ScriptBlockChunkCount = [System.UInt16] $scriptBlockChunkCount
