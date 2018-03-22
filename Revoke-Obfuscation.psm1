@@ -29,7 +29,7 @@ Measure-RvoObfuscation orchestrates the feature vector extraction, whitelist com
 Revoke-Obfuscation Function: Measure-RvoObfuscation
 Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
-Required Dependencies: Check-Whitelist, Get-RvoFeatureVector, Measure-Vector, .\Requirements\CommandLine\ConvertToPowerShellExpression.ps1
+Required Dependencies: Check-Whitelist, Get-RvoFeatureVector, Measure-Vector, .\Requirements\CommandLine\Convert-PowerShellCommandLine.ps1
 Optional Dependencies: None
 
 .DESCRIPTION
@@ -327,7 +327,7 @@ http://www.leeholmes.com/blog/
             if ($CommandLine.IsPresent)
             {
                 # Clean up the command line formatting for powershell.exe like decoding encoded commands, replacing -command "whole command goes here" with -command { whole command goes here }, etc.
-                $scriptContent = . $scriptDir\Requirements\CommandLine\ConvertToPowerShellExpression.ps1 $scriptContent
+                $scriptContent = . $scriptDir\Requirements\CommandLine\Convert-PowerShellCommandLine.ps1 $scriptContent
             }
             
             $counter++
@@ -1001,34 +1001,56 @@ C:\PS> Get-CSEventLogEntry -LogName Microsoft-Windows-PowerShell/Operational | G
 
 .EXAMPLE
 
-C:\PS> Get-RvoScriptBlock -Helix (tap search "class=ms_windows_powershell eventid=4104" InstanceID | ConvertFrom-Json)
+C:\PS> Get-RvoScriptBlock -Helix $SearchResults
 
 .NOTES
 
 This is a personal project developed by Daniel Bohannon and Lee Holmes while employees at MANDIANT, A FireEye Company and Microsoft, respectively.
 
-Follow below steps (as admin) to use CimSweep's Get-CSEventLogEntry cmdlet to query local or remote PowerShell Operational event logs.
-
-# Step 1: Trick WMI to read a modern event log by adding this registry value to your target system (below example is just for local system).
-$HKLM = [UInt32] 2147483650
-
-$MethodArgs = @{
-    Namespace = 'root/default'
-    ClassName = 'StdRegProv'
-    MethodName = 'CreateKey'
-    Arguments = @{
-        HDefKey = $HKLM
-        SSubKeyName = 'SYSTEM\CurrentControlSet\Services\EventLog\Microsoft-Windows-PowerShell/Operational'
+<Data-Gathering>
+    <CimSweep>
+    
+    Follow below steps (as admin) to use CimSweep's Get-CSEventLogEntry cmdlet to query local or remote PowerShell Operational event logs.
+    
+    # Step 1: Trick WMI to read a modern event log by adding this registry value to your target system (below example is just for local system).
+    $HKLM = [UInt32] 2147483650
+    
+    $MethodArgs = @{
+        Namespace = 'root/default'
+        ClassName = 'StdRegProv'
+        MethodName = 'CreateKey'
+        Arguments = @{
+            HDefKey = $HKLM
+            SSubKeyName = 'SYSTEM\CurrentControlSet\Services\EventLog\Microsoft-Windows-PowerShell/Operational'
+        }
     }
-}
+    
+    Invoke-CimMethod @MethodArgs
+    
+    # Step 2: Download/Import CimSweep core functions.
+    Invoke-Expression (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/PowerShellMafia/CimSweep/master/CimSweep/Core/CoreFunctions.ps1')
+    
+    # Step 3: Query modern PowerShell event log.
+    Get-CSEventLogEntry -LogName Microsoft-Windows-PowerShell/Operational | Where-Object { $_.EventIdentifier -eq 4104 }
+    
+    </CimSweep>
 
-Invoke-CimMethod @MethodArgs
 
-# Step 2: Download/Import CimSweep core functions.
-Invoke-Expression (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/PowerShellMafia/CimSweep/master/CimSweep/Core/CoreFunctions.ps1')
+    <FireEye-Helix>
+    
+    Follow steps below to retreive scriptblock logs from FireEye Helix API
+    
+    C:\PS> #Force TLS 1.2
+    C:\PS> [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    C:\PS> $header = @{"<API-KEY-NAME>"="<API-KEY-VALUE>"}
+    C:\PS> $resource = "<API-URI>"
+    C:\PS> $query = "class=ms_windows_powershell eventid=4104"
+    C:\PS> $body = @{"query"=$query}|ConvertTo-Json
+    C:\PS> $SearchResults = Invoke-RestMethod -Method post -Uri $resource -Header $header -Body $body -Verbose -ContentType "application/json"
+    
+    </FireEye-Helix>
+</Data-Gathering>
 
-# Step 3: Query modern PowerShell event log.
-Get-CSEventLogEntry -LogName Microsoft-Windows-PowerShell/Operational | Where-Object { $_.EventIdentifier -eq 4104 }
 
 .LINK
 
@@ -1052,7 +1074,7 @@ http://www.leeholmes.com/blog/
         $CimInstance,
         
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $false, ParameterSetName = 'Helix')]
-        $Helix,
+        $HelixObject,
         
         [Parameter(Mandatory = $false)]
         [Switch]
@@ -1187,11 +1209,12 @@ http://www.leeholmes.com/blog/
         }
         "Helix" {
             # Use API to query your instance for "class=ms_windows_powershell eventid=4104".
+            # See Help > Notes > Data-Gathering section for an example using Invoke-Webrequest.
             # Parsed field 'info' = EventLogRecord 'ScriptBlockText'
             # Parsed field 'processid' = EventLogRecord 'ScriptBlockID'
             
             # Perform renaming so that structure matches that of [System.Diagnostics.Eventing.Reader.EventLogRecord] objects.
-            [Object[]] $EventLogRecord = $Helix | Select-Object `
+            [Object[]] $EventLogRecord = $HelixObject | Select-Object `
                 @{ Name = 'id'              ; Expression = { [int]$_.eventid } },
                 @{ Name = 'TimeCreated'     ; Expression = { [datetime]$_.eventtime } },
                 @{ Name = 'LevelDisplayName'; Expression = { $_.severity } },
