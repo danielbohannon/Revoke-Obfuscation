@@ -1241,7 +1241,6 @@ http://www.leeholmes.com/blog/
     $scriptBlockValuesToIgnoreForReduceSwitch += '$global:?'
     $scriptBlockValuesToIgnoreForReduceSwitch += 'prompt'
     $scriptBlockValuesToIgnoreForReduceSwitch += 'exit'
-    $scriptBlockValuesToIgnoreForReduceSwitch += 'cls'
     $scriptBlockValuesToIgnoreForReduceSwitch += '{ Set-StrictMode -Version 1; $_.ErrorCategory_Message }'
     $scriptBlockValuesToIgnoreForReduceSwitch += '{ Set-StrictMode -Version 1; $_.OriginInfo }'
     $scriptBlockValuesToIgnoreForReduceSwitch += '{ Set-StrictMode -Version 1; $_.PSMessageDetails }'
