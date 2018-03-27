@@ -1066,7 +1066,8 @@ http://www.leeholmes.com/blog/
         $Path,
         
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'EventLogRecord')]
-        [System.Diagnostics.Eventing.Reader.EventLogRecord[]]$EventLogRecord,
+        [System.Diagnostics.Eventing.Reader.EventLogRecord[]]
+        $EventLogRecord,
         
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'CimInstance')]
         [PSTypeName("Microsoft.Management.Infrastructure.CimInstance#root/cimv2/Win32_NTLogEvent")]
