@@ -1040,7 +1040,6 @@ http://www.leeholmes.com/blog/
         $Path,
         
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'EventLogRecord')]
-        [System.Diagnostics.Eventing.Reader.EventLogRecord[]]
         $EventLogRecord,
         
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'CimInstance')]
