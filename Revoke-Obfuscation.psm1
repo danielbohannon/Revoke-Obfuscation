@@ -327,7 +327,7 @@ http://www.leeholmes.com/blog/
             if ($CommandLine.IsPresent)
             {
                 # Clean up the command line formatting for powershell.exe like decoding encoded commands, replacing -command "whole command goes here" with -command { whole command goes here }, etc.
-                $scriptContent = . $scriptDir\Requirements\CommandLine\Convert-PowerShellCommandLine.ps1 $scriptContent
+                $scriptContent = . $scriptDir/Requirements/CommandLine/Convert-PowerShellCommandLine.ps1 $scriptContent
             }
             
             $counter++
@@ -602,7 +602,7 @@ http://www.leeholmes.com/blog/
     Write-Verbose "Add-Type -Path .\Requirements\RevokeObfuscationHelpers.cs,.\Checks\*.cs -PassThru"
     
     # Compile required CSharp helper functions in the .\Requirements\ directory and feature extraction check functions in the .\Checks\ directory.
-    $outputTypes = Add-Type -Path $scriptDir\Requirements\RevokeObfuscationHelpers.cs,$scriptDir\Checks\*.cs -PassThru
+    $outputTypes = Add-Type -Path $scriptDir/Requirements/RevokeObfuscationHelpers.cs,$scriptDir/Checks/*.cs -PassThru
     
     # Add compiled CSharp functions to $script:cSharpCheckMethods for later reference when extracting features from input script.
     $script:cSharpCheckMethods = @()
@@ -2212,15 +2212,15 @@ http://www.leeholmes.com/blog/
 $scriptDir = Split-Path -Parent $myInvocation.MyCommand.Definition
 
 # Set whitelist directory and content and regex whitelist files. All scripts located in this directory and content/regex in these files will be automatically whitelisted by Measure-RvoObfuscation cmdlet.
-$whitelistDir         = "$scriptDir\Whitelist\Scripts_To_Whitelist"
-$whitelistRegexFile   = "$scriptDir\Whitelist\Regex_To_Whitelist.txt"
-$whitelistContentFile = "$scriptDir\Whitelist\Strings_To_Whitelist.txt"
+$whitelistDir         = "$scriptDir/Whitelist/Scripts_To_Whitelist"
+$whitelistRegexFile   = "$scriptDir/Whitelist/Regex_To_Whitelist.txt"
+$whitelistContentFile = "$scriptDir/Whitelist/Strings_To_Whitelist.txt"
 
 if (Test-Path (Join-Path $scriptDir 'Whitelist'))
 {
     # Register FileSystemWatcher object events to automatically run Update-RvoWhitelist whenever any files in .\Whitelist\ are created or modified.
     # This is to avoid re-hashing and re-loading all whitelist values for every invocation of Measure-RvoObfuscation, but instead only running Update-RvoWhitelist when something changes in .\Whitelist\.
-    $fsw = New-Object System.IO.FileSystemWatcher "$scriptDir\Whitelist\"
+    $fsw = New-Object System.IO.FileSystemWatcher "$scriptDir/Whitelist/"
     $fsw.IncludeSubdirectories = $true
     $createdSourceIdentifier = 'Revoke-Obfuscation_WhitelistWatcher_Created_' + [System.Guid]::NewGuid().Guid
     $changedSourceIdentifier = 'Revoke-Obfuscation_WhitelistWatcher_Changed_' + [System.Guid]::NewGuid().Guid
@@ -2235,7 +2235,7 @@ if (Test-Path (Join-Path $scriptDir 'Whitelist'))
 }
 
 # Set results directory.
-$resultObfuscatedDir  = "$scriptDir\Results\Obfuscated"
+$resultObfuscatedDir  = "$scriptDir/Results/Obfuscated"
 
 # Call function to run Add-Type on all required CSharp check scripts and helper scripts to compile them for current session.
 Add-CSharpCheck
