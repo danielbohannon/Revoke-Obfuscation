@@ -999,32 +999,58 @@ C:\PS> Get-WinEvent -LogName "Microsoft-Windows-PowerShell/Operational" | Get-Rv
 
 C:\PS> Get-CSEventLogEntry -LogName Microsoft-Windows-PowerShell/Operational | Get-RvoScriptBlock
 
+.EXAMPLE
+
+C:\PS> Get-RvoScriptBlock -Helix $SearchResults
+
 .NOTES
 
 This is a personal project developed by Daniel Bohannon and Lee Holmes while employees at MANDIANT, A FireEye Company and Microsoft, respectively.
 
-Follow below steps (as admin) to use CimSweep's Get-CSEventLogEntry cmdlet to query local or remote PowerShell Operational event logs.
-
-# Step 1: Trick WMI to read a modern event log by adding this registry value to your target system (below example is just for local system).
-$HKLM = [UInt32] 2147483650
-
-$MethodArgs = @{
-    Namespace = 'root/default'
-    ClassName = 'StdRegProv'
-    MethodName = 'CreateKey'
-    Arguments = @{
-        HDefKey = $HKLM
-        SSubKeyName = 'SYSTEM\CurrentControlSet\Services\EventLog\Microsoft-Windows-PowerShell/Operational'
+<Data-Gathering>
+    <CimSweep>
+    
+    Follow below steps (as admin) to use CimSweep's Get-CSEventLogEntry cmdlet to query local or remote PowerShell Operational event logs.
+    
+    # Step 1: Trick WMI to read a modern event log by adding this registry value to your target system (below example is just for local system).
+    $HKLM = [UInt32] 2147483650
+    
+    $MethodArgs = @{
+        Namespace = 'root/default'
+        ClassName = 'StdRegProv'
+        MethodName = 'CreateKey'
+        Arguments = @{
+            HDefKey = $HKLM
+            SSubKeyName = 'SYSTEM\CurrentControlSet\Services\EventLog\Microsoft-Windows-PowerShell/Operational'
+        }
     }
-}
+    
+    Invoke-CimMethod @MethodArgs
+    
+    # Step 2: Download/Import CimSweep core functions.
+    Invoke-Expression (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/PowerShellMafia/CimSweep/master/CimSweep/Core/CoreFunctions.ps1')
+    
+    # Step 3: Query modern PowerShell event log.
+    Get-CSEventLogEntry -LogName Microsoft-Windows-PowerShell/Operational | Where-Object { $_.EventIdentifier -eq 4104 }
+    
+    </CimSweep>
 
-Invoke-CimMethod @MethodArgs
 
-# Step 2: Download/Import CimSweep core functions.
-Invoke-Expression (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/PowerShellMafia/CimSweep/master/CimSweep/Core/CoreFunctions.ps1')
+    <FireEye-Helix>
+    
+    Follow steps below to retreive scriptblock logs from FireEye Helix API
+    
+    C:\PS> #Force TLS 1.2
+    C:\PS> [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    C:\PS> $header = @{"<API-KEY-NAME>"="<API-KEY-VALUE>"}
+    C:\PS> $resource = "<API-URI>"
+    C:\PS> $query = "class=ms_windows_powershell eventid=4104"
+    C:\PS> $body = @{"query"=$query}|ConvertTo-Json
+    C:\PS> $SearchResults = Invoke-RestMethod -Method post -Uri $resource -Header $header -Body $body -Verbose -ContentType "application/json"
+    
+    </FireEye-Helix>
+</Data-Gathering>
 
-# Step 3: Query modern PowerShell event log.
-Get-CSEventLogEntry -LogName Microsoft-Windows-PowerShell/Operational | Where-Object { $_.EventIdentifier -eq 4104 }
 
 .LINK
 
@@ -1046,6 +1072,9 @@ http://www.leeholmes.com/blog/
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'CimInstance')]
         [PSTypeName("Microsoft.Management.Infrastructure.CimInstance#root/cimv2/Win32_NTLogEvent")]
         $CimInstance,
+        
+        [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $false, ParameterSetName = 'Helix')]
+        $HelixObject,
         
         [Parameter(Mandatory = $false)]
         [Switch]
@@ -1178,6 +1207,31 @@ http://www.leeholmes.com/blog/
                 }
             }
         }
+        "Helix" {
+            # Use API to query your instance for "class=ms_windows_powershell eventid=4104".
+            # See Help > Notes > Data-Gathering section for an example using Invoke-Webrequest.
+            # Parsed field 'info' = EventLogRecord 'ScriptBlockText'
+            # Parsed field 'processid' = EventLogRecord 'ScriptBlockID'
+            
+            # Perform renaming so that structure matches that of [System.Diagnostics.Eventing.Reader.EventLogRecord] objects.
+            [Object[]] $EventLogRecord = $HelixObject | Select-Object `
+                @{ Name = 'id'              ; Expression = { [int]$_.eventid } },
+                @{ Name = 'TimeCreated'     ; Expression = { [datetime]$_.eventtime } },
+                @{ Name = 'LevelDisplayName'; Expression = { $_.severity } },
+                @{ Name = 'HostName'        ; Expression = { $_.hostname } },
+                @{ Name = 'Instance'        ; Expression = { $_.instance } },
+                @{ Name = 'Properties'      ; Expression = { `
+                    @(
+                        @{ Value = ([regex]::matches($_.msg,'\d+')).value[0] },
+                        @{ Value = ([regex]::matches($_.msg,'\d+')).value[1] },
+                        @{ Value = $_.info },
+                        @{ Value = $_.processid },
+                        @{ Value = $_.filename }
+                    )
+                }
+            }
+        }
+
     }
     
     Write-Verbose "Grouping and reassembling script blocks from the input $($EventLogRecord.Count) event log record(s)."
@@ -1187,6 +1241,7 @@ http://www.leeholmes.com/blog/
     $scriptBlockValuesToIgnoreForReduceSwitch += '$global:?'
     $scriptBlockValuesToIgnoreForReduceSwitch += 'prompt'
     $scriptBlockValuesToIgnoreForReduceSwitch += 'exit'
+    $scriptBlockValuesToIgnoreForReduceSwitch += 'cls'
     $scriptBlockValuesToIgnoreForReduceSwitch += '{ Set-StrictMode -Version 1; $_.ErrorCategory_Message }'
     $scriptBlockValuesToIgnoreForReduceSwitch += '{ Set-StrictMode -Version 1; $_.OriginInfo }'
     $scriptBlockValuesToIgnoreForReduceSwitch += '{ Set-StrictMode -Version 1; $_.PSMessageDetails }'
@@ -1234,12 +1289,16 @@ http://www.leeholmes.com/blog/
                 $timeCreated = [System.DateTime] $_.Group.TimeCreated[0]
                 $eid = [System.Uint16] $_.Group.Id[0]
                 $levelDisplayName = [System.String] $_.Group.LevelDisplayName[0]
+                $hostname = [System.String] $_.Group.HostName[0]
+                $instance = [System.String] $_.Group.Instance[0]
             }
             else
             {
                 $timeCreated = [System.DateTime] $_.Group.TimeCreated
                 $eid = [System.Uint16] $_.Group.Id
                 $levelDisplayName = [System.String] $_.Group.LevelDisplayName
+                $hostname = [System.String] $_.Group.HostName
+                $instance = [System.String] $_.Group.Instance
             }
 
             $scriptBlockChunkCount = [System.Uint16] $_.Group.Count
@@ -1262,6 +1321,8 @@ http://www.leeholmes.com/blog/
                 ScriptBlockId         = [System.String] $scriptBlockId
                 TimeCreated           = [System.DateTime] $timeCreated
                 Id                    = [System.UInt16] $eid
+                HostName              = [System.String] $hostname
+                Instance              = [System.String] $instance
                 LevelDisplayName      = [System.String] $levelDisplayName
                 Reassembled           = [System.Boolean] $reassembled
                 ScriptBlockChunkCount = [System.UInt16] $scriptBlockChunkCount
