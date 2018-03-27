@@ -53,7 +53,7 @@ Description = 'PowerShell module file for importing all required modules for the
 PowerShellVersion = '3.0'
 
 # Minimum version of the Windows PowerShell host required by this module
-PowerShellHostVersion = '3.0'
+PowerShellHostVersion = '1.6'
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module
 #ScriptsToProcess = @('Get-ScriptBlock.ps1')
