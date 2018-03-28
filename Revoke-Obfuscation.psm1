@@ -602,7 +602,7 @@ http://www.leeholmes.com/blog/
     Write-Verbose "Add-Type -Path .\Requirements\RevokeObfuscationHelpers.cs,.\Checks\*.cs -PassThru"
     
     # Compile required CSharp helper functions in the .\Requirements\ directory and feature extraction check functions in the .\Checks\ directory.
-    $outputTypes = Add-Type -Path $scriptDir/Requirements/RevokeObfuscationHelpers.cs,$scriptDir/Checks/*.cs -PassThru
+    $outputTypes = Add-Type -Path $scriptDir/Checks/checks.cs -PassThru
     
     # Add compiled CSharp functions to $script:cSharpCheckMethods for later reference when extracting features from input script.
     $script:cSharpCheckMethods = @()
