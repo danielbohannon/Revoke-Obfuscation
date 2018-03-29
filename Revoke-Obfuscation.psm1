@@ -151,6 +151,10 @@ http://www.leeholmes.com/blog/
         [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
         [System.String[]]
         $WhitelistRegex,
+
+        [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
+        [System.String[]]
+        $WhitelistHashPath,
         
         [Parameter(Mandatory = $false)]
         [Switch]
@@ -235,6 +239,25 @@ http://www.leeholmes.com/blog/
             }
         }
         
+        # Add all hashes from the file defined in the -WhitelistHashPath argument and add as whitelisted hashes for this current invocation.
+        $script:whitelistArgHashArray = @()
+        if ($WhitelistHashPath){
+            if (Test-Path $WhitelistHashPath)
+            {
+                # Parse out each line into an array of termName and termValue for more description behind each whitelisted result (and forced auditing of why a particular whitelist rule was added).
+                Get-Content $WhitelistHashPath | Where-Object { $_.Length -ne 0 } | ForEach-Object {
+                    $termName  = $_.Substring(0,$_.IndexOf(','))
+                    $termValue = $_.Substring($_.IndexOf(',') + 1)
+    
+                    # Add result as a PSCustomObject.
+                    $script:whitelistArgHashOnlyArray += , [PSCustomObject] @{
+                        Name  = [System.String] $termName
+                        Value = [System.String] $termValue
+                    }
+                }
+            }
+        }
+
         # Array that will house single or multiple input scripts that will be evaluated.
         $scriptContentArray = @()
     }
@@ -780,11 +803,11 @@ http://www.leeholmes.com/blog/
         $Hash
     )
     
-    # If input hash is found in $script:whitelistHashArray or $script:whitelistHashOnlyArray or $script:whitelistArgHashArray (populated during Measure-RvoObfuscation invocation via -WhitelistFile argument) then return positive match information in PSCustomObject.
-    if (($script:whitelistHashArray + $script:whitelistArgHashArray + $script:whitelistHashOnlyArray).Value -contains $Hash)
+    # If input hash is found in $script:whitelistHashArray or $script:whitelistHashOnlyArray or $script:whitelistArgHashArray (populated during Measure-RvoObfuscation invocation via -WhitelistFile argument) or $script:whitelistArgHashOnlyArray (populated during Measure-RvoObfuscation invocation via -WhitelistHashPath argument) then return positive match information in PSCustomObject.
+    if (($script:whitelistHashArray + $script:whitelistArgHashArray + $script:whitelistHashOnlyArray + $script:whitelistArgHashOnlyArray).Value -contains $Hash)
     {
         # Retrieve matching whitelist term, selecting the first match in case there are duplicates.
-        $whitelistTerm = ($script:whitelistHashArray + $script:whitelistArgHashArray + $script:whitelistHashOnlyArray) | Where-Object { $_.Value -eq $Hash } | Select-Object -First 1
+        $whitelistTerm = ($script:whitelistHashArray + $script:whitelistArgHashArray + $script:whitelistHashOnlyArray+ $script:whitelistArgHashOnlyArray) | Where-Object { $_.Value -eq $Hash } | Select-Object -First 1
         
         # Return result as a PSCustomObject.
         return [PSCustomObject] @{
