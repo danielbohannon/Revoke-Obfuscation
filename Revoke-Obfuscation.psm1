@@ -350,7 +350,7 @@ http://www.leeholmes.com/blog/
             if ($CommandLine.IsPresent)
             {
                 # Clean up the command line formatting for powershell.exe like decoding encoded commands, replacing -command "whole command goes here" with -command { whole command goes here }, etc.
-                $scriptContent = . $scriptDir\Requirements\CommandLine\Convert-PowerShellCommandLine.ps1 $scriptContent
+                $scriptContent = . $scriptDir/Requirements/CommandLine/Convert-PowerShellCommandLine.ps1 $scriptContent
             }
             
             $counter++
@@ -625,7 +625,7 @@ http://www.leeholmes.com/blog/
     Write-Verbose "Add-Type -Path .\Requirements\RevokeObfuscationHelpers.cs,.\Checks\*.cs -PassThru"
     
     # Compile required CSharp helper functions in the .\Requirements\ directory and feature extraction check functions in the .\Checks\ directory.
-    $outputTypes = Add-Type -Path $scriptDir\Requirements\RevokeObfuscationHelpers.cs,$scriptDir\Checks\*.cs -PassThru
+    $outputTypes = Add-Type -Path $scriptDir/Checks/checks.cs -PassThru
     
     # Add compiled CSharp functions to $script:cSharpCheckMethods for later reference when extracting features from input script.
     $script:cSharpCheckMethods = @()
@@ -1042,32 +1042,58 @@ C:\PS> Get-WinEvent -LogName "Microsoft-Windows-PowerShell/Operational" | Get-Rv
 
 C:\PS> Get-CSEventLogEntry -LogName Microsoft-Windows-PowerShell/Operational | Get-RvoScriptBlock
 
+.EXAMPLE
+
+C:\PS> Get-RvoScriptBlock -Helix $SearchResults
+
 .NOTES
 
 This is a personal project developed by Daniel Bohannon and Lee Holmes while employees at MANDIANT, A FireEye Company and Microsoft, respectively.
 
-Follow below steps (as admin) to use CimSweep's Get-CSEventLogEntry cmdlet to query local or remote PowerShell Operational event logs.
-
-# Step 1: Trick WMI to read a modern event log by adding this registry value to your target system (below example is just for local system).
-$HKLM = [UInt32] 2147483650
-
-$MethodArgs = @{
-    Namespace = 'root/default'
-    ClassName = 'StdRegProv'
-    MethodName = 'CreateKey'
-    Arguments = @{
-        HDefKey = $HKLM
-        SSubKeyName = 'SYSTEM\CurrentControlSet\Services\EventLog\Microsoft-Windows-PowerShell/Operational'
+<Data-Gathering>
+    <CimSweep>
+    
+    Follow below steps (as admin) to use CimSweep's Get-CSEventLogEntry cmdlet to query local or remote PowerShell Operational event logs.
+    
+    # Step 1: Trick WMI to read a modern event log by adding this registry value to your target system (below example is just for local system).
+    $HKLM = [UInt32] 2147483650
+    
+    $MethodArgs = @{
+        Namespace = 'root/default'
+        ClassName = 'StdRegProv'
+        MethodName = 'CreateKey'
+        Arguments = @{
+            HDefKey = $HKLM
+            SSubKeyName = 'SYSTEM\CurrentControlSet\Services\EventLog\Microsoft-Windows-PowerShell/Operational'
+        }
     }
-}
+    
+    Invoke-CimMethod @MethodArgs
+    
+    # Step 2: Download/Import CimSweep core functions.
+    Invoke-Expression (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/PowerShellMafia/CimSweep/master/CimSweep/Core/CoreFunctions.ps1')
+    
+    # Step 3: Query modern PowerShell event log.
+    Get-CSEventLogEntry -LogName Microsoft-Windows-PowerShell/Operational | Where-Object { $_.EventIdentifier -eq 4104 }
+    
+    </CimSweep>
 
-Invoke-CimMethod @MethodArgs
 
-# Step 2: Download/Import CimSweep core functions.
-Invoke-Expression (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/PowerShellMafia/CimSweep/master/CimSweep/Core/CoreFunctions.ps1')
+    <FireEye-Helix>
+    
+    Follow steps below to retreive scriptblock logs from FireEye Helix API
+    
+    C:\PS> #Force TLS 1.2
+    C:\PS> [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    C:\PS> $header = @{"<API-KEY-NAME>"="<API-KEY-VALUE>"}
+    C:\PS> $resource = "<API-URI>"
+    C:\PS> $query = "class=ms_windows_powershell eventid=4104"
+    C:\PS> $body = @{"query"=$query}|ConvertTo-Json
+    C:\PS> $SearchResults = Invoke-RestMethod -Method post -Uri $resource -Header $header -Body $body -Verbose -ContentType "application/json"
+    
+    </FireEye-Helix>
+</Data-Gathering>
 
-# Step 3: Query modern PowerShell event log.
-Get-CSEventLogEntry -LogName Microsoft-Windows-PowerShell/Operational | Where-Object { $_.EventIdentifier -eq 4104 }
 
 .LINK
 
@@ -1083,12 +1109,14 @@ http://www.leeholmes.com/blog/
         $Path,
         
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'EventLogRecord')]
-        [System.Diagnostics.Eventing.Reader.EventLogRecord[]]
         $EventLogRecord,
         
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'CimInstance')]
         [PSTypeName("Microsoft.Management.Infrastructure.CimInstance#root/cimv2/Win32_NTLogEvent")]
         $CimInstance,
+        
+        [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $false, ParameterSetName = 'Helix')]
+        $HelixObject,
         
         [Parameter(Mandatory = $false)]
         [Switch]
@@ -1221,6 +1249,31 @@ http://www.leeholmes.com/blog/
                 }
             }
         }
+        "Helix" {
+            # Use API to query your instance for "class=ms_windows_powershell eventid=4104".
+            # See Help > Notes > Data-Gathering section for an example using Invoke-Webrequest.
+            # Parsed field 'info' = EventLogRecord 'ScriptBlockText'
+            # Parsed field 'processid' = EventLogRecord 'ScriptBlockID'
+            
+            # Perform renaming so that structure matches that of [System.Diagnostics.Eventing.Reader.EventLogRecord] objects.
+            [Object[]] $EventLogRecord = $HelixObject | Select-Object `
+                @{ Name = 'id'              ; Expression = { [int]$_.eventid } },
+                @{ Name = 'TimeCreated'     ; Expression = { [datetime]$_.eventtime } },
+                @{ Name = 'LevelDisplayName'; Expression = { $_.severity } },
+                @{ Name = 'HostName'        ; Expression = { $_.hostname } },
+                @{ Name = 'Instance'        ; Expression = { $_.instance } },
+                @{ Name = 'Properties'      ; Expression = { `
+                    @(
+                        @{ Value = ([regex]::matches($_.msg,'\d+')).value[0] },
+                        @{ Value = ([regex]::matches($_.msg,'\d+')).value[1] },
+                        @{ Value = $_.info },
+                        @{ Value = $_.processid },
+                        @{ Value = $_.filename }
+                    )
+                }
+            }
+        }
+
     }
     
     Write-Verbose "Grouping and reassembling script blocks from the input $($EventLogRecord.Count) event log record(s)."
@@ -1277,12 +1330,16 @@ http://www.leeholmes.com/blog/
                 $timeCreated = [System.DateTime] $_.Group.TimeCreated[0]
                 $eid = [System.Uint16] $_.Group.Id[0]
                 $levelDisplayName = [System.String] $_.Group.LevelDisplayName[0]
+                $hostname = [System.String] $_.Group.HostName[0]
+                $instance = [System.String] $_.Group.Instance[0]
             }
             else
             {
                 $timeCreated = [System.DateTime] $_.Group.TimeCreated
                 $eid = [System.Uint16] $_.Group.Id
                 $levelDisplayName = [System.String] $_.Group.LevelDisplayName
+                $hostname = [System.String] $_.Group.HostName
+                $instance = [System.String] $_.Group.Instance
             }
 
             $scriptBlockChunkCount = [System.Uint16] $_.Group.Count
@@ -1305,6 +1362,8 @@ http://www.leeholmes.com/blog/
                 ScriptBlockId         = [System.String] $scriptBlockId
                 TimeCreated           = [System.DateTime] $timeCreated
                 Id                    = [System.UInt16] $eid
+                HostName              = [System.String] $hostname
+                Instance              = [System.String] $instance
                 LevelDisplayName      = [System.String] $levelDisplayName
                 Reassembled           = [System.Boolean] $reassembled
                 ScriptBlockChunkCount = [System.UInt16] $scriptBlockChunkCount
@@ -2256,16 +2315,17 @@ http://www.leeholmes.com/blog/
 $scriptDir = Split-Path -Parent $myInvocation.MyCommand.Definition
 
 # Set whitelist directory and content and regex whitelist files. All scripts located in this directory and content/regex in these files will be automatically whitelisted by Measure-RvoObfuscation cmdlet.
-$whitelistDir         = "$scriptDir\Whitelist\Scripts_To_Whitelist"
-$whitelistRegexFile   = "$scriptDir\Whitelist\Regex_To_Whitelist.txt"
-$whitelistContentFile = "$scriptDir\Whitelist\Strings_To_Whitelist.txt"
+
+$whitelistDir         = "$scriptDir/Whitelist/Scripts_To_Whitelist"
+$whitelistRegexFile   = "$scriptDir/Whitelist/Regex_To_Whitelist.txt"
+$whitelistContentFile = "$scriptDir/Whitelist/Strings_To_Whitelist.txt"
 $whitelistHashFile    = "$scriptDir/Whitelist/Hashes_To_Whitelist.txt"
 
 if (Test-Path (Join-Path $scriptDir 'Whitelist'))
 {
     # Register FileSystemWatcher object events to automatically run Update-RvoWhitelist whenever any files in .\Whitelist\ are created or modified.
     # This is to avoid re-hashing and re-loading all whitelist values for every invocation of Measure-RvoObfuscation, but instead only running Update-RvoWhitelist when something changes in .\Whitelist\.
-    $fsw = New-Object System.IO.FileSystemWatcher "$scriptDir\Whitelist\"
+    $fsw = New-Object System.IO.FileSystemWatcher "$scriptDir/Whitelist/"
     $fsw.IncludeSubdirectories = $true
     $createdSourceIdentifier = 'Revoke-Obfuscation_WhitelistWatcher_Created_' + [System.Guid]::NewGuid().Guid
     $changedSourceIdentifier = 'Revoke-Obfuscation_WhitelistWatcher_Changed_' + [System.Guid]::NewGuid().Guid
@@ -2280,7 +2340,7 @@ if (Test-Path (Join-Path $scriptDir 'Whitelist'))
 }
 
 # Set results directory.
-$resultObfuscatedDir  = "$scriptDir\Results\Obfuscated"
+$resultObfuscatedDir  = "$scriptDir/Results/Obfuscated"
 
 # Call function to run Add-Type on all required CSharp check scripts and helper scripts to compile them for current session.
 Add-CSharpCheck
