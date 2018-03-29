@@ -712,6 +712,26 @@ http://www.leeholmes.com/blog/
     }
     
     Write-Verbose "Loaded $($script:whitelistRegexArray.Count) whitelisted regex(es) from $whitelistRegexFile"
+
+    # Read in content of $whitelistHashFile into an array.
+    $script:whitelistHashOnlyArray = @()
+    if (Test-Path $whitelistHashFile)
+    {
+        # Parse out each line into an array of termName and termValue for more description behind each whitelisted result (and forced auditing of why a particular whitelist rule was added).
+        Get-Content $whitelistHashFile | Where-Object { $_.Length -ne 0 } | ForEach-Object {
+            $termName  = $_.Substring(0,$_.IndexOf(','))
+            $termValue = $_.Substring($_.IndexOf(',') + 1)
+
+            # Add result as a PSCustomObject.
+            $script:whitelistHashOnlyArray += , [PSCustomObject] @{
+                Name  = [System.String] $termName
+                Value = [System.String] $termValue
+            }
+        }
+    }
+    
+    Write-Verbose "Loaded $($script:whitelistHashOnlyArray.Count) whitelisted hash(es) from $whitelistHashFile"
+    
 }
 
 
@@ -760,11 +780,11 @@ http://www.leeholmes.com/blog/
         $Hash
     )
     
-    # If input hash is found in $script:whitelistHashArray or $script:whitelistArgHashArray (populated during Measure-RvoObfuscation invocation via -WhitelistFile argument) then return positive match information in PSCustomObject.
-    if (($script:whitelistHashArray + $script:whitelistArgHashArray).Value -contains $Hash)
+    # If input hash is found in $script:whitelistHashArray or $script:whitelistHashOnlyArray or $script:whitelistArgHashArray (populated during Measure-RvoObfuscation invocation via -WhitelistFile argument) then return positive match information in PSCustomObject.
+    if (($script:whitelistHashArray + $script:whitelistArgHashArray + $script:whitelistHashOnlyArray).Value -contains $Hash)
     {
         # Retrieve matching whitelist term, selecting the first match in case there are duplicates.
-        $whitelistTerm = ($script:whitelistHashArray + $script:whitelistArgHashArray) | Where-Object { $_.Value -eq $Hash } | Select-Object -First 1
+        $whitelistTerm = ($script:whitelistHashArray + $script:whitelistArgHashArray + $script:whitelistHashOnlyArray) | Where-Object { $_.Value -eq $Hash } | Select-Object -First 1
         
         # Return result as a PSCustomObject.
         return [PSCustomObject] @{
@@ -2216,6 +2236,7 @@ $scriptDir = Split-Path -Parent $myInvocation.MyCommand.Definition
 $whitelistDir         = "$scriptDir\Whitelist\Scripts_To_Whitelist"
 $whitelistRegexFile   = "$scriptDir\Whitelist\Regex_To_Whitelist.txt"
 $whitelistContentFile = "$scriptDir\Whitelist\Strings_To_Whitelist.txt"
+$whitelistHashFile    = "$scriptDir/Whitelist/Hashes_To_Whitelist.txt"
 
 if (Test-Path (Join-Path $scriptDir 'Whitelist'))
 {
