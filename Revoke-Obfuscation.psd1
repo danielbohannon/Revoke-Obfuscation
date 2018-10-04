@@ -35,7 +35,7 @@
 RootModule = 'Revoke-Obfuscation.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.1'
+ModuleVersion = '1.2'
 
 # ID used to uniquely identify this module
 GUID = 'a0a9150d-a6a4-ad17-f325-a3a24fed0aa9'
@@ -53,7 +53,7 @@ Description = 'PowerShell module file for importing all required modules for the
 PowerShellVersion = '3.0'
 
 # Minimum version of the Windows PowerShell host required by this module
-PowerShellHostVersion = '3.0'
+PowerShellHostVersion = '1.8.3'
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module
 #ScriptsToProcess = @('Get-ScriptBlock.ps1')
