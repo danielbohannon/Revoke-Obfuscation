@@ -526,6 +526,7 @@ http://dmitriicodes.com
             break
         }
         else{
+            # Only compatible with AzureML web service
             $headers=@{ 
                 'Authorization'=$json.APIKey 
                 'Content-Type'='application/json' 
@@ -544,7 +545,7 @@ http://dmitriicodes.com
                 }
             }
             $jsonBody = ($body | ConvertTo-Json -Depth 4)
-            $result = (( Invoke-WebRequest -headers $headers -body $jsonBody -method 'POST' -Uri $json.APIUri ) | ConvertFrom-Json )
+            $result = (( Invoke-WebRequest -headers $headers -body $jsonBody -method 'POST' -Uri $json.APIUri -ErrorAction SilentlyContinue ) | ConvertFrom-Json )
             if ($result -ne $null) {
                 $score = [double]$result.Results.output1.value.Values[0][0]
             }
@@ -571,7 +572,7 @@ http://dmitriicodes.com
                 while (($mappedIdx -lt $bucketSize) -and ($featureBucket[$mappedIdx] -lt $val)){
                     $mappedIdx++
                 }
-                # now compute bucketed rank transform (i/k)
+                # now compute bucketed rank transform
                 $normalizedFeatureVector[$i] = ($mappedIdx / $bucketSize)
             }
             [System.Object[]]$FeatureVector = $normalizedFeatureVector
