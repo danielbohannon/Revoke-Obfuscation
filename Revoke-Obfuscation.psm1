@@ -86,7 +86,7 @@ Specifies the Get-RvoScriptBlockResult reassembled script block result(s) to mea
 
 .PARAMETER WebScan
 
-(Optional) Uses a deployed model.
+(Optional) Submits the features to be scored by an online Azure ML model.
 
 .PARAMETER OutputToDisk
 
@@ -473,7 +473,7 @@ Specifies the feature vector generated from the Get-RvoFeatureVector function to
 
 .PARAMETER WebScan
 
-(Optional) Uses a deployed model.
+(Optional) Submits the features to be scored by an online Azure ML model.
 
 .PARAMETER Deep
 
@@ -516,16 +516,17 @@ http://dmitriicodes.com
         $WebScan
     )
     
-    $json = (Get-Content -Path ($PSScriptRoot + "\settings.json") -Raw) | ConvertFrom-Json
+    $json = (Get-Content -Path (Join-Path -Path $PSScriptRoot -ChildPath "settings.json") -Raw) | ConvertFrom-Json
     # Set appropriate $weightedVector value (and other specific variables), defaulting to the higher confidence weighted vector ($highConfidenceWeightedVector) unless the -Deep, -CommandLine, -NormalizedFeatures or -WebScan switches are specified.
 
     if($WebScan.isPresent)
     {
-        if ([string]::IsNullOrEmpty($json.APIKey) -or [string]::IsNullOrEmpty($json.APIUri)){
-            Write-Error "API settings are not specified."
-            break
+        if ([string]::IsNullOrEmpty($json.APIKey) -or [string]::IsNullOrEmpty($json.APIUri))
+        {
+            Throw "API settings are not specified."
         }
-        else{
+        else
+        {
             # Only compatible with AzureML web service
             $headers=@{ 
                 'Authorization'=$json.APIKey 
@@ -545,31 +546,47 @@ http://dmitriicodes.com
                 }
             }
             $jsonBody = ($body | ConvertTo-Json -Depth 4)
-            $result = (( Invoke-WebRequest -headers $headers -body $jsonBody -method 'POST' -Uri $json.APIUri -ErrorAction SilentlyContinue ) | ConvertFrom-Json )
-            if ($result -ne $null) {
-                $score = [double]$result.Results.output1.value.Values[0][0]
+            Try
+            {
+                $result = (( Invoke-WebRequest -headers $headers -body $jsonBody -method 'POST' -Uri $json.APIUri) | ConvertFrom-Json )
+                if ($result -ne $null) 
+                {
+                    $score = [double]$result.Results.output1.value.Values[0][0]
+                }
+                else 
+                {
+                    Throw "Result is null or undefined."
+                }
             }
-            else{
-                Write-Error "Web service is not responding".
+            Catch
+            {
+                Write-Error ("{0} {1}" -f $_.Exception.Message, $_.ErrorDetails.Message)
             }
         }
     }
     else
     {
-        if($NormalizedFeatures.IsPresent){
+        if($NormalizedFeatures.IsPresent)
+        {
             $weightedVector = $json.normalizedWeightedVector
             $importantFeatureIndexes = $json.importantFeatureIndexes
             $rankedFeatureBuckets = $json.featureBuckets
-            # pick only important features that training model picked and normalize accordingly
             $normalizedFeatureVector = @(0) * $importantFeatureIndexes.Count
-            for ($i = 0; $i -lt $importantFeatureIndexes.Count; $i++){
+            # pick only important features that training model picked and normalize accordingly
+            for ($i = 0; $i -lt $importantFeatureIndexes.Count; $i++)
+            {
+                # index of the feature that we want to keep
                 $keepIndex = $importantFeatureIndexes[$i]
+                # its value
                 $val = $FeatureVector[$keepIndex]
+                # during a training process we've created the buckets with some intervals that separate each feature into 100 equal groups
                 $featureBucket = $rankedFeatureBuckets[0].$keepIndex
+                # number of indexes in our bucket (bounds)
                 $bucketSize = $featureBucket.Count
                 # now scan for the bucket index that this feature val falls in
                 $mappedIdx = 0
-                while (($mappedIdx -lt $bucketSize) -and ($featureBucket[$mappedIdx] -lt $val)){
+                while (($mappedIdx -lt $bucketSize) -and ($featureBucket[$mappedIdx] -lt $val))
+                {
                     $mappedIdx++
                 }
                 # now compute bucketed rank transform
