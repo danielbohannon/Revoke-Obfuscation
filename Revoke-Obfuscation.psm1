@@ -80,11 +80,11 @@ Specifies the Get-RvoScriptBlockResult reassembled script block result(s) to mea
 
 (Optional) Specifies that the command-specific (as opposed to the default script-specific) weighted vector be used (in Measure-Vector function) to measure input vector.
 
-.PARAMETER NormalizedFeatures
+.PARAMETER Normalized
 
 (Optional) Specifies that only normalized and important features be used to measure obfuscation probablity.
 
-.PARAMETER WebScan
+.PARAMETER AzureML
 
 (Optional) Submits the features to be scored by an online Azure ML model.
 
@@ -170,11 +170,11 @@ http://www.leeholmes.com/blog/
 
         [Parameter(Mandatory = $false)]
         [Switch]
-        $NormalizedFeatures,
+        $Normalized,
 
         [Parameter(Mandatory = $false)]
         [Switch]
-        $WebScan,
+        $AzureML,
 
         [Parameter(Mandatory = $false)]
         [Switch]
@@ -356,9 +356,11 @@ http://www.leeholmes.com/blog/
             $sw.BaseStream.Position = 0
             $hash = (Get-FileHash -InputStream $sw.BaseStream -Algorithm SHA256).Hash
 
-            # Check if input $scriptContent matches any of the whitelisting options (SHA256 hash match, content match, or regex match).
-            [System.Timespan] $checkTime = Measure-Command { $whitelistResult = Check-Whitelist -ScriptContent $scriptContent -Hash $hash }
-
+            if (-not [string]::IsNullOrEmpty($scriptContent)){
+                # Check if input $scriptContent matches any of the whitelisting options (SHA256 hash match, content match, or regex match).
+                [System.Timespan] $checkTime = Measure-Command { $whitelistResult = Check-Whitelist -ScriptContent $scriptContent -Hash $hash }
+            }
+            
             if ($whitelistResult.Match)
             {
                 if ($PSBoundParameters.Verbose)
@@ -380,14 +382,32 @@ http://www.leeholmes.com/blog/
                 # Not whitelisted so we will proceed with extracting features and then measuring these features against specified weighted vector.
 
                 # Scrape features from input $scriptContent, storing the time in $checkTime.
-                [System.Timespan] $checkTime = Measure-Command { $scriptFeatures = Get-RvoFeatureVector -ScriptExpression $scriptContent }
+                [System.Timespan] $checkTime = Measure-Command { 
+                    if (-not [string]::IsNullOrEmpty($scriptContent)){
+                        $scriptFeatures = Get-RvoFeatureVector -ScriptExpression $scriptContent 
+                    }
+                }
                 
                 # Measure features vector scraped from input $scriptContent, storing the time in $measureTime.
-                [System.Timespan] $measureTime = Measure-Command { $vectorMeasurement = Measure-Vector -FeatureVector $scriptFeatures -Deep:$Deep -CommandLine:$CommandLine -NormalizedFeatures:$NormalizedFeatures -WebScan:$WebScan }
+                [System.Timespan] $measureTime = Measure-Command { 
+                    if ($scriptFeatures.Count -gt 0){
+                        $vectorMeasurement = Measure-Vector -FeatureVector $scriptFeatures -Deep:$Deep -CommandLine:$CommandLine -Normalized:$Normalized    -AzureML:$AzureML 
+                    }
+                }
                 
                 # Set obfuscated values in variable so they can be added to resultant PSCustomObject after this else block.
                 $obfuscated = $vectorMeasurement.Obfuscated
                 $obfuscatedScore = $vectorMeasurement.ObfuscatedScore
+
+                # If $scriptContent is empty
+                if ($obfuscated -eq $null)
+                {
+                    $obfuscated = $false;
+                }
+                if ($obfuscatedScore -eq $null)
+                {
+                    $obfuscatedScore = 0.0
+                }
 
                 if ($obfuscated)
                 {
@@ -467,11 +487,11 @@ Measure-Vector compares input feature vector against weighted vector ($weightedV
 
 Specifies the feature vector generated from the Get-RvoFeatureVector function to measure the obfuscation of the current script.
 
-.PARAMETER NormalizedFeatures
+.PARAMETER Normalized
 
 (Optional) Specifies that only normalized and important features be used to measure obfuscation probablity.
 
-.PARAMETER WebScan
+.PARAMETER AzureML
 
 (Optional) Submits the features to be scored by an online Azure ML model.
 
@@ -509,25 +529,26 @@ http://dmitriicodes.com
         
         [Parameter(Mandatory = $false)]
         [Switch]
-        $NormalizedFeatures,
+        $Normalized,
         
         [Parameter(Mandatory = $false)]
         [Switch]
-        $WebScan
+        $AzureML
     )
     
     $json = (Get-Content -Path (Join-Path -Path $PSScriptRoot -ChildPath "settings.json") -Raw) | ConvertFrom-Json
-    # Set appropriate $weightedVector value (and other specific variables), defaulting to the higher confidence weighted vector ($highConfidenceWeightedVector) unless the -Deep, -CommandLine, -NormalizedFeatures or -WebScan switches are specified.
+    # Set appropriate $weightedVector value (and other specific variables), defaulting to the higher confidence weighted vector ($highConfidenceWeightedVector) unless the -Deep, -CommandLine, -Normalized or -AzureML switches are specified.
 
-    if($WebScan.isPresent)
+    if($AzureML.isPresent)
     {
+        # Submit the features to an Azure ML model deployed at the uri defined in the config file (using the api key also from the config) and retrieve the score.
         if ([string]::IsNullOrEmpty($json.APIKey) -or [string]::IsNullOrEmpty($json.APIUri))
         {
             Throw "API settings are not specified."
         }
         else
         {
-            # Only compatible with AzureML web service
+            # Only compatible with AzureML web service: https://studio.azureml.net/
             $headers=@{ 
                 'Authorization'=$json.APIKey 
                 'Content-Type'='application/json' 
@@ -566,7 +587,7 @@ http://dmitriicodes.com
     }
     else
     {
-        if($NormalizedFeatures.IsPresent)
+        if($Normalized.IsPresent)
         {
             $weightedVector = $json.normalizedWeightedVector
             $importantFeatureIndexes = $json.importantFeatureIndexes

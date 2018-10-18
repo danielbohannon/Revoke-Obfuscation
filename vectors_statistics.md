@@ -49,11 +49,23 @@ Weighted feature vector generated from ModelTrainer.cs/ModelTrainer.exe during t
 - TrueNegativeRate: 0.7170  
 - FalseNegativeRate: 0.0023  
 
-## -NormalizedFeatures
+## -Normalized
 
 *Specifies that only normalized and important features be used to measure obfuscation probablity.*
 
 'normalizedWeightedVector' is being used:  
+
+Weighted feature vector generated from ModelTrainer.cs/ModelTrainer.exe after some of the training changes like:
+
+1. Statistical data binning;
+    *Number of bins for each feature = 100*
+2. Pruning of irrelevant features;
+    *Important features are the ones where number of unique bins > 3*
+3. Randomization of the data set;
+4. Use of development dataset;
+5. Early stopping to prevent overfitting;
+
+Best obtained performance is:
 
 - Accuracy: 0.9154
 - Precision: 0.9275
@@ -63,8 +75,3 @@ Weighted feature vector generated from ModelTrainer.cs/ModelTrainer.exe during t
 - FalsePositiveRate: 0.0340
 - TrueNegativeRate: 0.4802
 - FalseNegativeRate: 0.0506
-
---------
-
-- Number of bins for each feature = 100  
-- Important features are the ones where number of unique bins > 3
