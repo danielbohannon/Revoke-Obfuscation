@@ -12,36 +12,34 @@ public static class RevokeObfuscationHelpers
     {
         // Initialize Dictionary to store final results for this check since we cannot modify a Dictionary over which we are iterating.
         Dictionary<string, double> finalResult = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-        
+
         // Initialize counter to store Count results for percentage calculations.
         double totalItems = 0;
-        
+
         // Compute the counts for each specified item.
-        foreach(Ast targetAst in ast.FindAll( testAst => targetType.IsAssignableFrom(testAst.GetType()), true ))
+        foreach (Ast targetAst in ast.FindAll(testAst => targetType.IsAssignableFrom(testAst.GetType()), true))
         {
             // Increment count for totalItems (to be used in next foreach loop for calculating percentages).
             totalItems++;
 
             // Value extraction filter defined as a delegate so it is specified in the calling function.
             String resultKey = extractValue(targetAst);
-
             // Add entry to UNKNOWN if new item and not in predefined indexes.
-            if(resultKey != null)
+            if  (resultKey != null)
             {
-                if(! workingResult.ContainsKey(resultKey))
+                if  (!workingResult.ContainsKey(resultKey))
                 {
                     resultKey = "UNKNOWN";
                 }
-
                 // Increment count for current item.
                 workingResult[resultKey]++;
             }
         }
-        
-        foreach(String workingResultValue in workingResult.Keys)
+
+        foreach (String workingResultValue in workingResult.Keys)
         {
             // Add Count and Percent to final Dictionary.
-            if(totalItems == 0)
+            if  (totalItems == 0)
             {
                 finalResult[checkName + "_" + workingResultValue + "_Count"] = 0;
                 finalResult[checkName + "_" + workingResultValue + "_Percent"] = 0;
@@ -49,57 +47,56 @@ public static class RevokeObfuscationHelpers
             else
             {
                 finalResult[checkName + "_" + workingResultValue + "_Count"] = workingResult[workingResultValue];
-                finalResult[checkName + "_" + workingResultValue + "_Percent"] = ((double) workingResult[workingResultValue]) * 100 / totalItems;
+                finalResult[checkName + "_" + workingResultValue + "_Percent"] = ((double)workingResult[workingResultValue]) * 100 / totalItems;
             }
         }
-        
+
         // Return final result after sorting as a SortedDictionary.
         return new SortedDictionary<string, double>(finalResult);
     }
-    
-    
+
     public static IDictionary StringMetricCalculator(List<string> stringList, string checkName)
     {
         // Initialize Dictionary to store final results for this check since we cannot modify a Dictionary over which we are iterating.
         Dictionary<string, double> finalResult = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-        
+
         // Initialize Dictionary and counter to store Count results.
         // Dictionary is a clone of initializedCharDict so all possible characters are already initialized to zero so attribute columns will be consistent for any evaluated script or command.
         Dictionary<string, double> workingResult = new Dictionary<string, double>(initializedCharDict);
         double totalCharacters = 0;
         double totalSpecialCharacters = 0;
-        
+
         // Initialize Dictionary and List of integers to store the length of each string in stringList for later calculations (average/maximum/minimum/median/mode/range).
         List<double> stringLengthList = new List<double>();
         Dictionary<double, int> stringLengthDict = new Dictionary<double, int>();
-        
+
         // Initialize Dictionary and List of doubles and counter to store the density of each string in stringList for later calculations (average/maximum/minimum/median/mode/range).
         List<double> stringDensityList = new List<double>();
         Dictionary<double, int> stringDensityDict = new Dictionary<double, int>();
         double curStringWhitespaceTabCount = 0;
         double totalDensityValues = 0;
-        
+
         // Initialize Dictionary and List of doubles and counter to store the entropy of each string in stringList for later calculations (average/maximum/minimum/median/mode/range).
         List<double> stringEntropyList = new List<double>();
         Dictionary<double, int> stringEntropyDict = new Dictionary<double, int>();
         Dictionary<char, int> curStringCharDict = new Dictionary<char, int>();
         double totalEntropyValues = 0;
-        
+
         // Initialize Dictionary and List of doubles and counter to store the percentage of upper-case alpha characters among all alpha characters in each string in stringList for later calculations (average/maximum/minimum/median/mode/range).
         List<double> stringUpperAlphaPercentList = new List<double>();
         Dictionary<double, int> stringUpperAlphaPercentDict = new Dictionary<double, int>();
         double curStringAlphaCharCount = 0;
         double curStringUpperAlphaCharCount = 0;
         double totalUpperAlphaPercentValues = 0;
-        
+
         // Compute the counts for each specified item.
-        foreach(String curString in stringList)
+        foreach (String curString in stringList)
         {
             // Add curString lengths for later calculations (average/maximum/minimum/median/mode/range).
             stringLengthList.Add(curString.Length);
-            
+
             // Add to dictionary for Mode calculation.
-            if(stringLengthDict.ContainsKey(curString.Length))
+            if  (stringLengthDict.ContainsKey(curString.Length))
             {
                 stringLengthDict[curString.Length] = stringLengthDict[curString.Length] + 1;
             }
@@ -107,35 +104,37 @@ public static class RevokeObfuscationHelpers
             {
                 stringLengthDict[curString.Length] = 1;
             }
-            
+
             // Reset curString whitespace and tab counts for later density calculations.
             curStringWhitespaceTabCount = 0;
 
             // Reset Dictionary for curString character distribution for later entropy calculations.
             curStringCharDict.Clear();
-            
+
             // Reset curString alpha and upper-alpha character counts for later upper-alpha character percentage calculations.
             curStringAlphaCharCount = 0;
             curStringUpperAlphaCharCount = 0;
-            
-            foreach(Char curChar in curString.ToCharArray())
+
+            foreach (Char curChar in curString.ToCharArray())
             {
                 // Convert current character to a string that is the UTF8 representation of the character.
                 // This is to handle non-printable characters, Unicode characters, and to properly both upper- and lower-case versions of the same characters.
                 String resultKey = ConvertToEncodedChar(curChar);
-                
+
                 // Increment count for totalCharacters for later percentage calculations.
                 totalCharacters++;
-                
+
                 // Increment counter for tab or whitespace for later density calculations.
-                switch(curChar)
+                switch (curChar)
                 {
-                    case ' ' : curStringWhitespaceTabCount++; break;
-                    case '\t' : curStringWhitespaceTabCount++; break;
+                    case ' ' : curStringWhitespaceTabCount++;
+                        break;
+                    case '\t' : curStringWhitespaceTabCount++;
+                        break;
                 }
 
                 // Increment character frequency for later entropy calculations.
-                if(curStringCharDict.ContainsKey(curChar))
+                if  (curStringCharDict.ContainsKey(curChar))
                 {
                     curStringCharDict[curChar]++;
                 }
@@ -143,32 +142,32 @@ public static class RevokeObfuscationHelpers
                 {
                     curStringCharDict[curChar] = 1;
                 }
-                
+
                 // Increment counter if curChar is a special character.
-                if(IsSpecialChar(curChar))
+                if  (IsSpecialChar(curChar))
                 {
                     totalSpecialCharacters++;
                 }
-                
+
                 // Increment counter if curChar is an alpha character.
-                if(IsAlphaChar(curChar))
+                if  (IsAlphaChar(curChar))
                 {
                     curStringAlphaCharCount++;
-                    
+
                     // Increment counter if curChar is an upper-case alpha character.
-                    if(IsUpperAlphaChar(curChar))
+                    if  (IsUpperAlphaChar(curChar))
                     {
                         curStringUpperAlphaCharCount++;
                     }
                 }
-                
+
                 // Increment count for current item.
                 workingResult[resultKey]++;
             }
-            
+
             // Add curString density to list for later calculations (average/maximum/minimum/median/mode/range).
             double curStringDensity = 0;
-            if(curString.Length > 0)
+            if  (curString.Length > 0)
             {
                 curStringDensity = (curString.Length - curStringWhitespaceTabCount) / curString.Length;
             }
@@ -177,7 +176,7 @@ public static class RevokeObfuscationHelpers
             totalDensityValues += curStringDensity;
 
             // Add to dictionary for Mode calculation.
-            if(stringDensityDict.ContainsKey(curStringDensity))
+            if  (stringDensityDict.ContainsKey(curStringDensity))
             {
                 stringDensityDict[curStringDensity]++;
             }
@@ -185,7 +184,7 @@ public static class RevokeObfuscationHelpers
             {
                 stringDensityDict[curStringDensity] = 1;
             }
-            
+
             // Calculate entropy for curString.
             double curStringEntropy = GetEntropy(curStringCharDict, curString.Length);
 
@@ -194,7 +193,7 @@ public static class RevokeObfuscationHelpers
             totalEntropyValues += curStringEntropy;
 
             // Add to dictionary for Mode calculation.
-            if(stringEntropyDict.ContainsKey(curStringEntropy))
+            if  (stringEntropyDict.ContainsKey(curStringEntropy))
             {
                 stringEntropyDict[curStringEntropy]++;
             }
@@ -202,17 +201,17 @@ public static class RevokeObfuscationHelpers
             {
                 stringEntropyDict[curStringEntropy] = 1;
             }
-            
+
             // Add curString upper-alpha character percentage (only if there are alpha characters in curString) to list for later calculations (average/maximum/minimum/median/mode/range).
-            if(curStringAlphaCharCount > 0)
+            if  (curStringAlphaCharCount > 0)
             {
                 double curStringUpperAlphaCharPercent = curStringUpperAlphaCharCount / curStringAlphaCharCount;
-                
+
                 stringUpperAlphaPercentList.Add(curStringUpperAlphaCharPercent);
                 totalUpperAlphaPercentValues += curStringUpperAlphaCharPercent;
 
                 // Add to dictionary for Mode calculation.
-                if(stringUpperAlphaPercentDict.ContainsKey(curStringUpperAlphaCharPercent))
+                if  (stringUpperAlphaPercentDict.ContainsKey(curStringUpperAlphaCharPercent))
                 {
                     stringUpperAlphaPercentDict[curStringUpperAlphaCharPercent]++;
                 }
@@ -222,11 +221,11 @@ public static class RevokeObfuscationHelpers
                 }
             }
         }
-        
-        foreach(String workingResultValue in workingResult.Keys)
+
+        foreach (String workingResultValue in workingResult.Keys)
         {
             // Add Count and Percent to final Dictionary.
-            if(totalCharacters == 0)
+            if  (totalCharacters == 0)
             {
                 finalResult[checkName + "_CharacterDistribution_" + workingResultValue + "_Count"] = 0;
                 finalResult[checkName + "_CharacterDistribution_" + workingResultValue + "_Percent"] = 0;
@@ -234,12 +233,12 @@ public static class RevokeObfuscationHelpers
             else
             {
                 finalResult[checkName + "_CharacterDistribution_" + workingResultValue + "_Count"] = workingResult[workingResultValue];
-                finalResult[checkName + "_CharacterDistribution_" + workingResultValue + "_Percent"] = ((double) workingResult[workingResultValue]) * 100 / totalCharacters;
+                finalResult[checkName + "_CharacterDistribution_" + workingResultValue + "_Percent"] = ((double)workingResult[workingResultValue]) * 100 / totalCharacters;
             }
         }
-        
+
         // Add Count and Percent for special characters to final Dictionary.
-        if(totalCharacters == 0)
+        if  (totalCharacters == 0)
         {
             finalResult[checkName + "_CharacterDistribution_SpecialCharacterOnly_Count"] = 0;
             finalResult[checkName + "_CharacterDistribution_SpecialCharacterOnly_Percent"] = 0;
@@ -247,32 +246,31 @@ public static class RevokeObfuscationHelpers
         else
         {
             finalResult[checkName + "_CharacterDistribution_SpecialCharacterOnly_Count"] = totalSpecialCharacters;
-            finalResult[checkName + "_CharacterDistribution_SpecialCharacterOnly_Percent"] = ((double) totalSpecialCharacters) * 100 / totalCharacters;
+            finalResult[checkName + "_CharacterDistribution_SpecialCharacterOnly_Percent"] = ((double)totalSpecialCharacters) * 100 / totalCharacters;
         }
-        
+
         // Add total count of all input strings to final Dictionary.
         finalResult[checkName + "_Count"] = stringLengthList.Count;
-            
+
         // Add cumulative length of all input strings to final Dictionary.
         finalResult[checkName + "_Length_Total"] = totalCharacters;
-        
+
         // Calculate length, density and entropy values and add to finalResult.
         finalResult = GetAvgMaxMinMedModRan(finalResult, stringLengthList, totalCharacters, stringLengthDict, checkName + "_Length");
         finalResult = GetAvgMaxMinMedModRan(finalResult, stringDensityList, totalDensityValues, stringDensityDict, checkName + "_Density");
         finalResult = GetAvgMaxMinMedModRan(finalResult, stringEntropyList, totalEntropyValues, stringEntropyDict, checkName + "_Entropy");
         finalResult = GetAvgMaxMinMedModRan(finalResult, stringUpperAlphaPercentList, totalUpperAlphaPercentValues, stringUpperAlphaPercentDict, checkName + "_UpperAlphaPercent");
-        
+
         // Return final result after sorting as a SortedDictionary.
         return new SortedDictionary<string, double>(finalResult);
     }
-    
-    
+
     public static Dictionary<string, double> GetAvgMaxMinMedModRan(Dictionary<string, double> finalResult, List<double> inputList, double totalInputs, Dictionary<double, int> inputDictForMode, string checkName)
     {
         // Calculate the average/maximum/minimum/median/mode/range of input values.
-        
+
         // Set default values if inputList is empty.
-        if(inputList.Count == 0)
+        if  (inputList.Count == 0)
         {
             // Add average/maximum/minimum/median/mode/range to final Dictionary.
             finalResult[checkName + "_Average"] = 0;
@@ -286,7 +284,7 @@ public static class RevokeObfuscationHelpers
         {
             // Sort all inputList values and calculate average/maximum/minimum/median/mode/range.
             inputList.Sort();
-            
+
             // Add average/maximum/minimum/median/mode/range to final Dictionary.
             finalResult[checkName + "_Average"] = totalInputs / inputList.Count;
             finalResult[checkName + "_Maximum"] = inputList[inputList.Count-1];
@@ -295,57 +293,51 @@ public static class RevokeObfuscationHelpers
             finalResult[checkName + "_Mode"] = GetMode(inputDictForMode);
             finalResult[checkName + "_Range"] = inputList[inputList.Count-1] - inputList[0];
         }
-        
+
         // Return results.
         return finalResult;
     }
-    
-    
+
     public static double GetEntropy(Dictionary<char, int> charDict, int totalChars)
     {
         // Calculate the entropy of input values.
-        
         double entropy = 0;
-        if(totalChars > 0)
+        if  (totalChars > 0)
         {
-            foreach(char charCountKey in charDict.Keys)
+            foreach (char charCountKey in charDict.Keys)
             {
                 double curCharPercent = (double)charDict[charCountKey] / totalChars;
-                
                 entropy += -curCharPercent * Math.Log(curCharPercent, 2);
             }
         }
-        
+
         // Return entropy value.
         return entropy;
     }
-    
-    
+
     public static double GetMode(Dictionary<double, int> inputDictionary)
     {
         // Calculate the mode of input values.
-        
         double modeValue = double.MinValue;
         double maxInputCount = double.MinValue;
-        foreach(double inputDictionaryValue in inputDictionary.Keys)
+        foreach (double inputDictionaryValue in inputDictionary.Keys)
         {
-            if(inputDictionary[inputDictionaryValue] > maxInputCount)
+            if  (inputDictionary[inputDictionaryValue] > maxInputCount)
             {
                 maxInputCount = inputDictionary[inputDictionaryValue];
                 modeValue = inputDictionaryValue;
             }
         }
-        
+
         // Return mode value.
         return modeValue;
     }
-    
-    
+
     public static Dictionary<string, double> initializedCharDict = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
     {
         // Initialize Dictionary with all possible character key values included in the character frequency analysis in StringMetricCalculator function.
         // This Dictionary will be cloned for each instance of the StringMetricCalculator function for performance purposes.
-        
+
         // Initialize printable characters.
         {"SPACE_20", 0},
         {"!_21", 0},
@@ -442,7 +434,7 @@ public static class RevokeObfuscationHelpers
         {"|_7c", 0},
         {"}_7d", 0},
         {"~_7e", 0},
-        
+
         // Initialize non-printable (but common) UTF keys.
         {"NUL_00", 0},
         {"SOH_01", 0},
@@ -477,39 +469,39 @@ public static class RevokeObfuscationHelpers
         {"RS_1E" , 0},
         {"US_1F" , 0},
         {"DEL_7F", 0},
-        
-        // Initialize specific special whitespaces, dashes and quotes that PowerShell explicitly handles (https://github.com/PowerShell/PowerShell/blob/02b5f357a20e6dee9f8e60e3adb9025be3c94490/src/System.Management.Automation/engine/parser/CharTraits.cs#L7-L26).
-        
+
+        // Initialize specific special whitespaces, dashes and quotes that PowerShell explicitly handles.
+        // https://github.com/PowerShell/PowerShell/blob/02b5f357a20e6dee9f8e60e3adb9025be3c94490/src/System.Management.Automation/engine/parser/CharTraits.cs#L7-L26
+
         // Uncommon whitespace.
         {"SpecialChar_NoBreakSpace_194_160", 0},
         {"SpecialChar_NextLine_194_133", 0},
-        
+
         // Special dashes.
         {"SpecialChar_EnDash_226_128_147", 0},
         {"SpecialChar_EmDash_226_128_148", 0},
         {"SpecialChar_HorizontalBar_226_128_149", 0},
-        
+
         // Special single quotes.
         {"SpecialChar_QuoteSingleLeft_226_128_152", 0},
         {"SpecialChar_QuoteSingleRight_226_128_153", 0},
         {"SpecialChar_QuoteSingleBase_226_128_154", 0},
         {"SpecialChar_QuoteReversed_226_128_155", 0},
-        
+
         // Special double quotes.
         {"SpecialChar_QuoteDoubleLeft_226_128_156", 0},
         {"SpecialChar_QuoteDoubleRight_226_128_157", 0},
         {"SpecialChar_QuoteLowDoubleLeft_226_128_158", 0},
-        
+
         // Initialize UNKNOWN_UNICODE and UNKNOWN_UTF keys.
         {"UNKNOWN_UNICODE", 0},
         {"UNKNOWN_UTF", 0},
     };
 
-    
+
     public static bool IsSpecialChar(char charToCheck)
     {
         // Return true if input charToCheck is a special character. Otherwise return false.
-        
         switch(charToCheck)
         {
             case '\t' : return false;
@@ -580,12 +572,11 @@ public static class RevokeObfuscationHelpers
             default : return true;
         }
     }
-    
-    
+
+
     public static bool IsAlphaChar(char charToCheck)
     {
         // Return true if input charToCheck is an alpha character [a-zA-Z]. Otherwise return false.
-        
         switch(charToCheck)
         {
             case 'A' : return true;
@@ -643,12 +634,11 @@ public static class RevokeObfuscationHelpers
             default : return false;
         }
     }
-    
-    
+
+
     public static bool IsUpperAlphaChar(char charToCheck)
     {
         // Return true if input charToCheck is an upper-case alpha character [A-Z]. Otherwise return false.
-        
         switch(charToCheck)
         {
             case 'A' : return true;
@@ -680,13 +670,11 @@ public static class RevokeObfuscationHelpers
             default : return false;
         }
     }
-    
-    
+
     public static String ConvertToEncodedChar(Char curChar)
     {
         // For efficiency we will avoid computing UTF8 encoding values for the most commmon printable characters.
         // Any characters not found in the below switch statement will have their UTF8 encoded values computed in the remainder of this function.
-        
         switch(curChar)
         {
             case ' ': return "SPACE_20";
@@ -785,50 +773,51 @@ public static class RevokeObfuscationHelpers
             case '}': return "}_7d";
             case '~': return "~_7e";
         }
-        
+
         // Convert curChar to string and then get UTF8 encoding as a string.
         Encoding utfEnc = new UTF8Encoding(true, true);
         Byte[] charBytes = utfEnc.GetBytes(curChar.ToString());
-        
+
         // Return if curChar is a Unicode character.
-        if(charBytes.Length > 1)
+        if  (charBytes.Length > 1)
         {
-            // Handle specific special whitespaces, dashes and quotes that PowerShell explicitly handles (https://github.com/PowerShell/PowerShell/blob/02b5f357a20e6dee9f8e60e3adb9025be3c94490/src/System.Management.Automation/engine/parser/CharTraits.cs#L7-L26).
-            switch(String.Join("_", charBytes))
+            // Handle specific special whitespaces, dashes and quotes that PowerShell explicitly handles.
+            // https://github.com/PowerShell/PowerShell/blob/02b5f357a20e6dee9f8e60e3adb9025be3c94490/src/System.Management.Automation/engine/parser/CharTraits.cs#L7-L26
+            switch (String.Join("_", charBytes))
             {
                 // Uncommon whitespace.
                 case "194_160": return "SpecialChar_NoBreakSpace_194_160";
                 case "194_133": return "SpecialChar_NextLine_194_133";
-                
+
                 // Special dashes.
                 case "226_128_147": return "SpecialChar_EnDash_226_128_147";
                 case "226_128_148": return "SpecialChar_EmDash_226_128_148";
                 case "226_128_149": return "SpecialChar_HorizontalBar_226_128_149";
-                
+
                 // Special single quotes.
                 case "226_128_152": return "SpecialChar_QuoteSingleLeft_226_128_152";
                 case "226_128_153": return "SpecialChar_QuoteSingleRight_226_128_153";
                 case "226_128_154": return "SpecialChar_QuoteSingleBase_226_128_154";
                 case "226_128_155": return "SpecialChar_QuoteReversed_226_128_155";
-                
+
                 // Special double quotes.
                 case "226_128_156": return "SpecialChar_QuoteDoubleLeft_226_128_156";
                 case "226_128_157": return "SpecialChar_QuoteDoubleRight_226_128_157";
                 case "226_128_158": return "SpecialChar_QuoteLowDoubleLeft_226_128_158";
-                
+
                 default: return "UNKNOWN_UNICODE";
             }
         }
-        
+
         // Convert char byte to a string.
         String charBytesUtfAsString = String.Format("{0:X2}", charBytes[0]);
-        
+
         // Convert input char to string to be included in the key in result.
         String charName = curChar.ToString();
-        
+
         // If char is not included in "printable character" regex then we do not want to use it as a key as it would pollute our resultant data for analysis.
         // For non-printable characters we will replace common characters with TEXT representation of the character's meaning (or UTF8 as the default) in below switch statement.
-        switch(charBytesUtfAsString)
+        switch  (charBytesUtfAsString)
         {
             case "00": return "NUL_00";
             case "01": return "SOH_01";

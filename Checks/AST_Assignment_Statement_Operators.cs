@@ -10,7 +10,7 @@ public class GroupedAssignmentStatements
     {
         // Initialize Dictionary with common array counts initialized to 0.
         Dictionary<String, Double> astGroupedAssignmentStatementsDictionary = new Dictionary<String, Double>(StringComparer.OrdinalIgnoreCase);
-        
+
         astGroupedAssignmentStatementsDictionary["Equals"] = 0;
         astGroupedAssignmentStatementsDictionary["PlusEquals"] = 0;
         astGroupedAssignmentStatementsDictionary["MinusEquals"] = 0;
@@ -18,9 +18,16 @@ public class GroupedAssignmentStatements
         astGroupedAssignmentStatementsDictionary["DivideEquals"] = 0;
         astGroupedAssignmentStatementsDictionary["RemainderEquals"] = 0;
         astGroupedAssignmentStatementsDictionary["UNKNOWN"] = 0;
-        
+
         // Return all targeted AST objects by Count and Percent across the entire input AST object.
-        return RevokeObfuscationHelpers.AstValueGrouper(ast, typeof(AssignmentStatementAst), astGroupedAssignmentStatementsDictionary, "AstGroupedAssignmentStatements",
-            targetAst => { return ((AssignmentStatementAst) targetAst).Operator.ToString(); } );
+        return RevokeObfuscationHelpers.AstValueGrouper(
+            ast,
+            typeof(AssignmentStatementAst),
+            astGroupedAssignmentStatementsDictionary,
+            "AstGroupedAssignmentStatements",
+            targetAst => {
+                return ((AssignmentStatementAst) targetAst).Operator.ToString();
+            }
+        );
     }
 }

@@ -2,24 +2,24 @@
 
 ## Default
 
-'highConfidenceWeightedVector' is being used:  
+'highConfidenceWeightedVector' is being used:
 
-Weighted feature vector generated from ModelTrainer.cs/ModelTrainer.exe during the training phase based on in-the-wild samples.  
+Weighted feature vector generated from ModelTrainer.cs/ModelTrainer.exe during the training phase based on in-the-wild samples.
 
-- Accuracy: 0.9605  
-- Precision: 0.9609  
-- Recall: 0.9353  
-- F1Score: 0.9479  
-- TruePositiveRate: 0.3595  
-- FalsePositiveRate: 0.0146  
-- TrueNegativeRate: 0.6010  
-- FalseNegativeRate: 0.0249  
+- Accuracy: 0.9605
+- Precision: 0.9609
+- Recall: 0.9353
+- F1Score: 0.9479
+- TruePositiveRate: 0.3595
+- FalsePositiveRate: 0.0146
+- TrueNegativeRate: 0.6010
+- FalseNegativeRate: 0.0249
 
 ## -Deep
 
 *Specifies that the deeper (but lower confidence) weighted vector be used to measure input vector, thus a "deep" inspection that will allow more False Positives but fewer False Negatives than the default high confidence weighted vector.*
 
-'broadNetWeightedVector' is being used:  
+'broadNetWeightedVector' is being used:
 
 Weighted feature vector generated from ModelTrainer.cs/ModelTrainer.exe during the training phase.
 
@@ -36,24 +36,24 @@ Weighted feature vector generated from ModelTrainer.cs/ModelTrainer.exe during t
 
 *Specifies that the command-specific (as opposed to the default script-specific) weighted vector be used to measure input vector.*
 
-'commandLineWeightedVector' is being used:  
+'commandLineWeightedVector' is being used:
 
-Weighted feature vector generated from ModelTrainer.cs/ModelTrainer.exe during the training phase based on in-the-wild samples.  
-  
-- Accuracy: 0.9959  
-- Precision: 0.9937  
-- Recall: 0.9918  
-- F1Score: 0.9927  
-- TruePositiveRate: 0.2789  
-- FalsePositiveRate: 0.0018  
-- TrueNegativeRate: 0.7170  
-- FalseNegativeRate: 0.0023  
+Weighted feature vector generated from ModelTrainer.cs/ModelTrainer.exe during the training phase based on in-the-wild samples.
+
+- Accuracy: 0.9959
+- Precision: 0.9937
+- Recall: 0.9918
+- F1Score: 0.9927
+- TruePositiveRate: 0.2789
+- FalsePositiveRate: 0.0018
+- TrueNegativeRate: 0.7170
+- FalseNegativeRate: 0.0023
 
 ## -Normalized
 
 *Specifies that only normalized and important features be used to measure obfuscation probablity.*
 
-'normalizedWeightedVector' is being used:  
+'normalizedWeightedVector' is being used:
 
 Weighted feature vector generated from ModelTrainer.cs/ModelTrainer.exe after some of the training changes like:
 

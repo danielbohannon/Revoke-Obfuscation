@@ -10,7 +10,7 @@ public class GroupedUnaryExpressionOperators
     {
         // Initialize Dictionary with common array counts initialized to 0.
         Dictionary<String, Double> astGroupedUnaryExpressionOperatorsDictionary = new Dictionary<String, Double>(StringComparer.OrdinalIgnoreCase);
-        
+
         astGroupedUnaryExpressionOperatorsDictionary["Exclaim"] = 0;
         astGroupedUnaryExpressionOperatorsDictionary["Not"] = 0;
         astGroupedUnaryExpressionOperatorsDictionary["Minus"] = 0;
@@ -24,9 +24,16 @@ public class GroupedUnaryExpressionOperators
         astGroupedUnaryExpressionOperatorsDictionary["Isplit"] = 0;
         astGroupedUnaryExpressionOperatorsDictionary["Csplit"] = 0;
         astGroupedUnaryExpressionOperatorsDictionary["UNKNOWN"] = 0;
-        
+
         // Return all targeted AST objects by Count and Percent across the entire input AST object.
-        return RevokeObfuscationHelpers.AstValueGrouper(ast, typeof(UnaryExpressionAst), astGroupedUnaryExpressionOperatorsDictionary, "AstGroupedUnaryExpressionOperators",
-            targetAst => { return ((UnaryExpressionAst) targetAst).TokenKind.ToString(); } );
+        return RevokeObfuscationHelpers.AstValueGrouper(
+            ast,
+            typeof(UnaryExpressionAst),
+            astGroupedUnaryExpressionOperatorsDictionary,
+            "AstGroupedUnaryExpressionOperators",
+            targetAst => {
+                return ((UnaryExpressionAst) targetAst).TokenKind.ToString();
+            }
+        );
     }
 }

@@ -5,6 +5,8 @@
 #         and Lee Holmes <@Lee_Holmes>
 #         while at Microsoft <https://www.microsoft.com>
 #
+#   Modified by Dmitrii Vasilev while at Microsoft <https://www.microsoft.com>
+#
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #   You may obtain a copy of the License at
@@ -17,8 +19,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-
-
 function Measure-RvoObfuscation
 {
 <#
@@ -27,7 +27,7 @@ function Measure-RvoObfuscation
 Measure-RvoObfuscation orchestrates the feature vector extraction, whitelist comparisons, and obfuscation measurements for input script path (or URL), expression, script block, or Get-RvoScriptBlock result or results. Results are returned as an array of PSCustomObjects containing the input script and additional metadata (whitelisted, obfuscated, contents hash, etc.).
 
 Revoke-Obfuscation Function: Measure-RvoObfuscation
-Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
+Authors: Daniel Bohannon (@danielhbohannon), Lee Holmes (@Lee_Holmes) and Dmitrii Vasilev
 License: Apache License, Version 2.0
 Required Dependencies: Check-Whitelist, Get-RvoFeatureVector, Measure-Vector, .\Requirements\CommandLine\Convert-PowerShellCommandLine.ps1
 Optional Dependencies: None
@@ -116,20 +116,21 @@ This is a personal project developed by Daniel Bohannon and Lee Holmes while emp
 
 http://www.danielbohannon.com
 http://www.leeholmes.com/blog/
+http://www.dmitriicodes.com
 #>
 
-    [CmdletBinding(DefaultParameterSetName = 'Path')] 
+    [CmdletBinding(DefaultParameterSetName = 'Path')]
     param (
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'Url')]
         [Alias('Uri')]
         [System.Uri[]]
         $Url,
-        
+
         [Parameter(Position = 0, Mandatory = $true, ParameterSetName = 'Path')]
         [Alias('File')]
         [System.String[]]
         $Path,
-        
+
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipelineByPropertyName = $true, ParameterSetName = 'LiteralPath')]
         [Alias('PSPath')]
         [System.String]
@@ -139,31 +140,31 @@ http://www.leeholmes.com/blog/
         [Alias('Expression','ScriptContent')]
         [System.String[]]
         $ScriptExpression,
-        
+
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'ScriptBlock')]
         [ScriptBlock[]]
         $ScriptBlock,
-        
+
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'GetRvoScriptBlockResult')]
         [PSTypeName("RevokeObfuscation.RvoScriptBlockResult")]
         $GetRvoScriptBlockResult,
-        
+
         [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
         [System.String[]]
         $WhitelistFile,
-        
+
         [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
         [System.String[]]
         $WhitelistContent,
-        
+
         [Parameter(Mandatory = $false, ValueFromPipeline = $false)]
         [System.String[]]
         $WhitelistRegex,
-        
+
         [Parameter(Mandatory = $false)]
         [Switch]
         $Deep,
-        
+
         [Parameter(Mandatory = $false)]
         [Switch]
         $CommandLine,
@@ -180,7 +181,7 @@ http://www.leeholmes.com/blog/
         [Switch]
         $OutputToDisk
     )
-    
+
     begin
     {
         # Generate hashes for all scripts/paths defined in the -WhitelistFile argument and add as whitelisted scripts for this current invocation.
@@ -213,7 +214,7 @@ http://www.leeholmes.com/blog/
                     $sw.Flush()
                     $sw.BaseStream.Position = 0
                     $hash = (Get-FileHash -InputStream $sw.BaseStream -Algorithm SHA256).Hash
-                
+
                     # Add hash to $script:whitelistArgHashArray as a PSCustomObject for later comparisons in Check-Whitelist function.
                     $script:whitelistArgHashArray += , [PSCustomObject] @{
                         Name  = [System.String] $file
@@ -250,11 +251,11 @@ http://www.leeholmes.com/blog/
                 }
             }
         }
-        
+
         # Array that will house single or multiple input scripts that will be evaluated.
         $scriptContentArray = @()
     }
-    
+
     process
     {
         # Handle various input formats to produce the same data format in the $scriptContent variable for calculating SHA256 hash.
@@ -335,17 +336,17 @@ http://www.leeholmes.com/blog/
         $counter = 0
         $totalCount = $scriptContentArray.Count
         return $scriptContentArray | ForEach-Object {
-            
+
             $source = $_.Source
             $scriptContent = $_.Content
-            
+
             # If -CommandLine switch is selected then clean up the arguments for proper feature extraction and measurement.
             if ($CommandLine.IsPresent)
             {
                 # Clean up the command line formatting for powershell.exe like decoding encoded commands, replacing -command "whole command goes here" with -command { whole command goes here }, etc.
                 $scriptContent = . $scriptDir\Requirements\CommandLine\Convert-PowerShellCommandLine.ps1 $scriptContent
             }
-            
+
             $counter++
 
             # Compute hash for input $scriptContent.
@@ -360,7 +361,7 @@ http://www.leeholmes.com/blog/
                 # Check if input $scriptContent matches any of the whitelisting options (SHA256 hash match, content match, or regex match).
                 [System.Timespan] $checkTime = Measure-Command { $whitelistResult = Check-Whitelist -ScriptContent $scriptContent -Hash $hash }
             }
-            
+
             if ($whitelistResult.Match)
             {
                 if ($PSBoundParameters.Verbose)
@@ -382,19 +383,19 @@ http://www.leeholmes.com/blog/
                 # Not whitelisted so we will proceed with extracting features and then measuring these features against specified weighted vector.
 
                 # Scrape features from input $scriptContent, storing the time in $checkTime.
-                [System.Timespan] $checkTime = Measure-Command { 
+                [System.Timespan] $checkTime = Measure-Command {
                     if (-not [string]::IsNullOrEmpty($scriptContent)){
-                        $scriptFeatures = Get-RvoFeatureVector -ScriptExpression $scriptContent 
+                        $scriptFeatures = Get-RvoFeatureVector -ScriptExpression $scriptContent
                     }
                 }
-                
+
                 # Measure features vector scraped from input $scriptContent, storing the time in $measureTime.
-                [System.Timespan] $measureTime = Measure-Command { 
+                [System.Timespan] $measureTime = Measure-Command {
                     if ($scriptFeatures.Count -gt 0){
-                        $vectorMeasurement = Measure-Vector -FeatureVector $scriptFeatures -Deep:$Deep -CommandLine:$CommandLine -Normalized:$Normalized    -AzureML:$AzureML 
+                        $vectorMeasurement = Measure-Vector -FeatureVector $scriptFeatures -Deep:$Deep -CommandLine:$CommandLine -Normalized:$Normalized -AzureML:$AzureML
                     }
                 }
-                
+
                 # Set obfuscated values in variable so they can be added to resultant PSCustomObject after this else block.
                 $obfuscated = $vectorMeasurement.Obfuscated
                 $obfuscatedScore = $vectorMeasurement.ObfuscatedScore
@@ -425,7 +426,7 @@ http://www.leeholmes.com/blog/
                         {
                             New-Item -ItemType Directory -Path $resultObfuscatedDir -Force
                         }
-                        
+
                         $resultFile = "$resultObfuscatedDir\$hash.ps1"
                         Set-Content -Path $resultFile -Value $scriptContent -NoNewline
                     }
@@ -478,7 +479,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Measure-Vector compares input feature vector against weighted vector ($weightedVector) computed during the training phase using ModelTrainer.cs/ModelTrainer.exe. Measure-Vector returns a PSCustomObject with a boolean and double containing information detailing the obfuscation level for the input feature vector.
@@ -526,16 +527,16 @@ http://dmitriicodes.com
         [Parameter(Mandatory = $false)]
         [Switch]
         $CommandLine,
-        
+
         [Parameter(Mandatory = $false)]
         [Switch]
         $Normalized,
-        
+
         [Parameter(Mandatory = $false)]
         [Switch]
         $AzureML
     )
-    
+
     $json = (Get-Content -Path (Join-Path -Path $PSScriptRoot -ChildPath "settings.json") -Raw) | ConvertFrom-Json
     # Set appropriate $weightedVector value (and other specific variables), defaulting to the higher confidence weighted vector ($highConfidenceWeightedVector) unless the -Deep, -CommandLine, -Normalized or -AzureML switches are specified.
 
@@ -549,17 +550,17 @@ http://dmitriicodes.com
         else
         {
             # Only compatible with AzureML web service: https://studio.azureml.net/
-            $headers=@{ 
-                'Authorization'=$json.APIKey 
-                'Content-Type'='application/json' 
-                'Accept'='application/json' 
-            }        
+            $headers=@{
+                'Authorization'=$json.APIKey
+                'Content-Type'='application/json'
+                'Accept'='application/json'
+            }
             $body=@{
                 "Inputs"= @{
                     "input1"= @{
                         "ColumnNames"= @(
                             $json.columnNames
-                        ) 
+                        )
                         "Values"=@(
                             ,@($FeatureVector.Values)
                         )
@@ -570,11 +571,11 @@ http://dmitriicodes.com
             Try
             {
                 $result = (( Invoke-WebRequest -headers $headers -body $jsonBody -method 'POST' -Uri $json.APIUri) | ConvertFrom-Json )
-                if ($result -ne $null) 
+                if ($result -ne $null)
                 {
                     $score = [double]$result.Results.output1.value.Values[0][0]
                 }
-                else 
+                else
                 {
                     Throw "Result is null or undefined."
                 }
@@ -627,21 +628,21 @@ http://dmitriicodes.com
         {
             $weightedVector = $json.highConfidenceWeightedVector
         }
-    
+
         # The number of elements in the input $FeatureVector array and the pre-generated $weightedVector array must be equal in order to accurately measure the obfuscation level of the input $FeatureVector array.
         # This mismatch will occur if: 1) check scripts are altered or removed, 2) additional check scripts are added to the Checks directory, or 3) an updated $weightedVector array is added above.
         if ($FeatureVector.Count -ne ($weightedVector.Count - 1))
         {
             Write-Error "Feature count mismatch ($($FeatureVector.Count) -ne $($weightedVector.Count - 1))"
         }
-    
+
         [System.Double] $obfuscationProbability = $weightedVector[0]
-    
+
         for ($i = 0; $i -lt ($weightedVector.Length - 1); $i++)
         {
             $obfuscationProbability += ($weightedVector[$i + 1] * $FeatureVector[$i])
         }
-    
+
         $score = 1.0 / (1.0 + [Math]::Exp(-$obfuscationProbability))
     }
 
@@ -672,7 +673,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Add-CSharpCheck compiles (via Add-Type) all CSharp .cs check files located in the Checks directory and adds the compiled class/method pairs to the $script:cSharpCheckMethods variable for later retrieval and check invocations in the Get-RvoFeatureVector function.
@@ -689,10 +690,10 @@ http://www.leeholmes.com/blog/
 
     Write-Verbose "Compiling CSharp Check Functions"
     Write-Verbose "Add-Type -Path .\Requirements\RevokeObfuscationHelpers.cs,.\Checks\*.cs -PassThru"
-    
+
     # Compile required CSharp helper functions in the .\Requirements\ directory and feature extraction check functions in the .\Checks\ directory.
     $outputTypes = Add-Type -Path $scriptDir\Requirements\RevokeObfuscationHelpers.cs,$scriptDir\Checks\*.cs -PassThru
-    
+
     # Add compiled CSharp functions to $script:cSharpCheckMethods for later reference when extracting features from input script.
     $script:cSharpCheckMethods = @()
     foreach ($outputType in $outputTypes | Where-Object { $_.GetMethod("AnalyzeAst") })
@@ -701,7 +702,7 @@ http://www.leeholmes.com/blog/
         $methodName = "AnalyzeAst"
 
         $script:cSharpCheckMethods += , @($className , $methodName)
-        
+
         Write-Verbose "Check Compiled :: [$className]::$methodName"
     }
 }
@@ -718,7 +719,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Update-RvoWhitelist computes SHA256 hashes for any scripts located in the $whitelistDir directory and adds these hashes and any content and/or regular expression whitelist rule names and terms defined in Strings_To_Whitelist.txt and Regex_To_Whitelist.txt files in the Whitelists directory to their respective arrays. These arrays are used by the Check-Whitelist function to whitelist defined scripts and script content when using the 7fuscation function.
@@ -759,10 +760,10 @@ http://www.leeholmes.com/blog/
                 Value = [System.String] $hash
             }
         }
-        
+
         Write-Verbose "Computed hashes for $($whitelistFiles.Count) file(s) in whitelist directory $whitelistDir"
     }
-    
+
     # Read in content of $whitelistContentFile into an array.
     $script:whitelistStringArray = @()
     if (Test-Path $whitelistContentFile)
@@ -779,7 +780,7 @@ http://www.leeholmes.com/blog/
             }
         }
     }
-    
+
     Write-Verbose "Loaded $($script:whitelistStringArray.Count) whitelisted string(s) from $whitelistContentFile"
 
     # Read in content of $whitelistRegexFile into an array.
@@ -798,7 +799,7 @@ http://www.leeholmes.com/blog/
             }
         }
     }
-    
+
     Write-Verbose "Loaded $($script:whitelistRegexArray.Count) whitelisted regex(es) from $whitelistRegexFile"
 }
 
@@ -815,7 +816,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Check-Whitelist checks input script against all values in the three whitelisting avenues (SHA256, content/string whitelist and RegEx whitelist) set in the Update-RvoWhitelist function. Check-Whitelist returns a PSCustomObject containing information about the whitelisting result, including (if whitelisted) the whitelist type, rule name and value that matched.
@@ -842,18 +843,18 @@ http://www.leeholmes.com/blog/
         [Parameter(Position = 0, Mandatory = $true)]
         [System.String]
         $ScriptContent,
-        
+
         [Parameter(Position = 0, Mandatory = $true)]
         [System.String]
         $Hash
     )
-    
+
     # If input hash is found in $script:whitelistHashArray or $script:whitelistArgHashArray (populated during Measure-RvoObfuscation invocation via -WhitelistFile argument) then return positive match information in PSCustomObject.
     if (($script:whitelistHashArray + $script:whitelistArgHashArray).Value -contains $Hash)
     {
         # Retrieve matching whitelist term, selecting the first match in case there are duplicates.
         $whitelistTerm = ($script:whitelistHashArray + $script:whitelistArgHashArray) | Where-Object { $_.Value -eq $Hash } | Select-Object -First 1
-        
+
         # Return result as a PSCustomObject.
         return [PSCustomObject] @{
             Match = [System.Boolean] $true
@@ -861,8 +862,8 @@ http://www.leeholmes.com/blog/
             Name  = [System.String] $whitelistTerm.Name
             Value = [System.String] $whitelistTerm.Value
         }
-    }   
-    
+    }
+
     # If any single string value in $script:whitelistStringArray or $script:whitelistArgStringArray (populated during Measure-RvoObfuscation invocation via -WhitelistContent argument) is found in $scriptContent then return positive match information in PSCustomObject.
     foreach ($whitelistTerm in ($script:whitelistStringArray + $script:whitelistArgStringArray))
     {
@@ -877,7 +878,7 @@ http://www.leeholmes.com/blog/
             }
         }
     }
-    
+
     # If any single regex value in $script:whitelistRegexArray or $script:whitelistArgRegexArray (populated during Measure-RvoObfuscation invocation via -WhitelistRegex argument) is found in $scriptContent then return positive match information in PSCustomObject.
     foreach ($whitelistTerm in ($script:whitelistRegexArray + $script:whitelistArgRegexArray))
     {
@@ -892,7 +893,7 @@ http://www.leeholmes.com/blog/
             }
         }
     }
-    
+
     # Return $false (not whitelisted) as a PSCustomObject if no matches in above whitelist checks.
     return [PSCustomObject] @{
         Match = [System.Boolean] $false
@@ -915,7 +916,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Get-RvoFeatureVector extracts thousands of features from input script via execution of all AST-based (Abstract Syntax Tree) .cs check files located in the Checks directory and returns them as an ordered hashtable. These features can be compared to weighted vectors in the Measure-RvoObfuscation function to determine obfuscation level.
@@ -963,16 +964,16 @@ http://www.leeholmes.com/blog/
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'Path')]
         [System.IO.FileInfo]
         $Path,
-        
+
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'ScriptExpression')]
         [System.String[]]
         $ScriptExpression,
-        
+
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'ScriptBlock')]
         [ScriptBlock[]]
         $ScriptBlock
     )
-    
+
     # Handle various input formats to produce the same data format in the $scriptContent variable.
     switch ($PSCmdlet.ParameterSetName)
     {
@@ -991,7 +992,7 @@ http://www.leeholmes.com/blog/
 
     # Parse $scriptContent into an AST object.
     $ast = [System.Management.Automation.Language.Parser]::ParseInput($scriptContent,[Ref] $null,[Ref] $null)
-    
+
     # Create ordered hashtable to store all CheckScript results for current AST object.
     $allCheckScriptResults = [Ordered] @{}
 
@@ -1038,7 +1039,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Get-RvoScriptBlock extracts and reassembles PowerShell scripts and commands from script block logs found in PowerShell Operational event log EID 4104 events, returning them as a PSCustomObject with additional metadata fields (like % reassembled, log level, time created, etc.).
@@ -1126,20 +1127,20 @@ http://www.leeholmes.com/blog/
         [Alias('File')]
         [System.String]
         $Path,
-        
+
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'EventLogRecord')]
         [System.Diagnostics.Eventing.Reader.EventLogRecord[]]
         $EventLogRecord,
-        
+
         [Parameter(Position = 0, Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'CimInstance')]
         [PSTypeName("Microsoft.Management.Infrastructure.CimInstance#root/cimv2/Win32_NTLogEvent")]
         $CimInstance,
-        
+
         [Parameter(Mandatory = $false)]
         [Switch]
         $Deep
     )
-    
+
     # Handle various input formats to produce the same data format in the $EventLogRecord variable.
     switch ($PSCmdlet.ParameterSetName)
     {
@@ -1160,7 +1161,7 @@ http://www.leeholmes.com/blog/
             {
                 Write-Warning "Currently processing $($inputFiles.Count) files. Depending on the size of the files this could take several minutes.`n         For faster performance try passing one file at a time into Get-RvoScriptBlock."
             }
-            
+
             # Read event logs from input event log or MIR/HX event log audit file path(s) and query out script block logs (EID 4104) from input PowerShell Operatrional event log.
             $curFileCount = 0
             $EventLogRecord = $inputFiles | ForEach-Object {
@@ -1202,7 +1203,7 @@ http://www.leeholmes.com/blog/
 
                     # MIR/HX audits need to have html entities decoded.
                     Add-Type -AssemblyName System.Web
-        
+
                     # Query out script block logs (EID 4104) from input MIR/HX event log audit.
                     # Perform renaming so that structure matches that of [System.Diagnostics.Eventing.Reader.EventLogRecord] objects.
                     [Object[]] $EventLogRecord = ([xml](Get-Content $auditfile)).ItemList.EventLogItem | Where-Object { $_.EID -eq 4104 } |  Select-Object `
@@ -1267,7 +1268,7 @@ http://www.leeholmes.com/blog/
             }
         }
     }
-    
+
     Write-Verbose "Grouping and reassembling script blocks from the input $($EventLogRecord.Count) event log record(s)."
 
     # Set exact script block values to ignore (unless the -Deep flag is set). This is to reduce noise for default script block values that we might not care about.
@@ -1282,13 +1283,13 @@ http://www.leeholmes.com/blog/
 
     # Create an array to house all (reassembled) unique script block values to only return unique script blocks (unless the -Deep switch is set).
     $UniqueScriptBlocks = @()
-    
+
     # Grouping and sorting all script block events (EID 4104) to reassemble and add corresponding metadata to resultant array of PSCustomObjects.
     # Base code taken from https://blogs.msdn.microsoft.com/powershell/2015/06/09/powershell-the-blue-team/ per the Blue Team master, Lee Holmes (@Lee_Holmes).
     ($EventLogRecord | Group-Object { $_.Properties[3].Value } | ForEach-Object { $_.Group | Group-Object { $_.Properties[0].Value } } | ForEach-Object { $_.Group[0] }) | Group-Object {$_.Properties[3].Value} | ForEach-Object {
         $sortedScripts = $_.Group | Sort-Object { $_.Properties[0].Value }
         $mergedScript = ($sortedScripts | ForEach-Object { $_.Properties[2].Value }) -join ''
-        
+
         # Use continue variable to decide if reassembled script block should continue in metadata enrichment process.
         $continue = $true
         if (-not $Deep)
@@ -1310,13 +1311,13 @@ http://www.leeholmes.com/blog/
                 $UniqueScriptBlocks += $mergedScript
             }
         }
-        
+
         # Store reassembled script block results and corresponding metadata in a PSCustomObject.
         if ($continue)
         {
             $scriptBlockId = [System.String] $_.Name
             $recordCount = $_.Group.Count
-    
+
             if ($recordCount -gt 1)
             {
                 $timeCreated = [System.DateTime] $_.Group.TimeCreated[0]
@@ -1376,7 +1377,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Show-AsciiIntro displays introductory animated ASCII art and project title information.
@@ -1394,7 +1395,7 @@ This is a personal project developed by Daniel Bohannon and Lee Holmes while emp
 http://www.danielbohannon.com
 http://www.leeholmes.com/blog/
 #>
-    
+
     # STAGE 0 - Print full command (no special highlighting).
     Clear-Host
 
@@ -1415,7 +1416,7 @@ http://www.leeholmes.com/blog/
     Write-Host "[*] " -NoNewLine -ForegroundColor Cyan
     Write-Host "Invocation Operator" -NoNewLine -ForegroundColor Yellow
     Write-Host " Char Freq :: " -NoNewline -ForegroundColor Cyan
-    
+
     Start-Sleep -Milliseconds 500
 
     # STAGE 1B - Highlight invocation operator argument + special highlighting for special characters.
@@ -1424,7 +1425,7 @@ http://www.leeholmes.com/blog/
     Write-Host "[*] Analyzing Script...`n" -ForegroundColor White
     Write-Host "." -NoNewline -ForegroundColor Cyan
     Write-Host "(-" -NoNewline -ForegroundColor Red
-    
+
     Write-Host "join" -NoNewline -ForegroundColor Yellow
     Write-Host "'" -NoNewline -ForegroundColor Red
     Write-Host "legitxyz" -NoNewline -ForegroundColor Yellow
@@ -1441,7 +1442,7 @@ http://www.leeholmes.com/blog/
     Write-Host "[*] " -NoNewLine -ForegroundColor Cyan
     Write-Host "Invocation Operator" -NoNewLine -ForegroundColor Yellow
     Write-Host " Char Freq :: " -NoNewline -ForegroundColor Cyan
-    
+
     Start-Sleep -Milliseconds 200
 
     # Print below string in "interactive format" like hands on keyboard.
@@ -1470,7 +1471,7 @@ http://www.leeholmes.com/blog/
     Write-Host "[*] " -NoNewLine -ForegroundColor Cyan
     Write-Host "Cmdlet" -NoNewLine -ForegroundColor Yellow
     Write-Host " Char Freq              :: " -NoNewline -ForegroundColor Cyan
-    
+
     Start-Sleep -Milliseconds 500
 
     # STAGE 2B - Highlight cmdlet + special highlighting for special characters.
@@ -1499,9 +1500,9 @@ http://www.leeholmes.com/blog/
     Write-Host "[*] " -NoNewLine -ForegroundColor Cyan
     Write-Host "Cmdlet" -NoNewLine -ForegroundColor Yellow
     Write-Host " Char Freq              :: " -NoNewline -ForegroundColor Cyan
-    
+
     Write-Host "15% Tick Marks" -ForegroundColor Red
-    
+
     Start-Sleep -Milliseconds 500
 
     # STAGE 2C - Highlight cmdlet + special highlighting for uppercase characters.
@@ -1534,9 +1535,9 @@ http://www.leeholmes.com/blog/
     Write-Host "15% Tick Marks" -ForegroundColor Red
 
     Write-Host "                                  :: " -NoNewline -ForegroundColor Cyan
-    
+
     Write-Host "47% Capital Characters" -ForegroundColor Red
-    
+
     Start-Sleep -Milliseconds 500
 
     # STAGE 3A - Highlight all strings.
@@ -1623,7 +1624,7 @@ http://www.leeholmes.com/blog/
     Write-Host "1.00 (Avg Density)" -ForegroundColor Red
     Write-Host "                                  :: " -NoNewline -ForegroundColor Cyan
     Write-Host "1.389 (Avg Entropy)" -ForegroundColor Red
-    
+
     Start-Sleep -Milliseconds 250
 
     Write-Host "[*] " -NoNewLine -ForegroundColor Cyan
@@ -1636,22 +1637,22 @@ http://www.leeholmes.com/blog/
 
     Write-Host "                                  :: " -NoNewline -ForegroundColor Cyan
     Write-Host "12.821% Pipeline AST Objects" -ForegroundColor Red
-    
+
     Start-Sleep -Milliseconds 150
 
     Write-Host "                                  :: " -NoNewline -ForegroundColor Cyan
     Write-Host "10.256% ParenExpression AST Objects" -ForegroundColor Red
-    
+
     Start-Sleep -Milliseconds 100
 
     Write-Host "                                  :: " -NoNewline -ForegroundColor Cyan
     Write-Host "7.692% CommandExpression AST Objects" -ForegroundColor Red
-    
+
     Start-Sleep -Milliseconds 100
 
     Write-Host "                                  :: " -NoNewline -ForegroundColor Cyan
     Write-Host "7.692% ConstantExpression AST Objects" -ForegroundColor Red
-    
+
     # STAGE 5A - Highlight additional analysis details.
 
     Start-Sleep -Milliseconds 100
@@ -1665,13 +1666,13 @@ http://www.leeholmes.com/blog/
     Write-Host "`n[*] " -NoNewLine -ForegroundColor Cyan
     Write-Host "<300ms" -NoNewLine -ForegroundColor Yellow
     Write-Host " To Analyze Most Input PowerShell Scripts" -NoNewline -ForegroundColor Cyan
-    
+
     Start-Sleep -Milliseconds 50
 
     Write-Host "`n[*] " -NoNewLine -ForegroundColor Cyan
     Write-Host "12K+ Scripts/Hour" -NoNewLine -ForegroundColor Yellow
     Write-Host " Average Analysis Rate" -NoNewline -ForegroundColor Cyan
-    
+
     Start-Sleep -Milliseconds 100
 
     Write-Host "`n[*] " -NoNewLine -ForegroundColor Cyan
@@ -1681,21 +1682,21 @@ http://www.leeholmes.com/blog/
     Write-Host "`n[*] " -NoNewLine -ForegroundColor Cyan
     Write-Host "28K+" -NoNewLine -ForegroundColor Yellow
     Write-Host " PowerShell Script Authors In Corpus" -NoNewline -ForegroundColor Cyan
-    
+
     # Main Title ASCII.
     # Credit for ASCII art font generation: http://patorjk.com/software/taag/
 
 $titleAsciiArt = @"
-                 ______                   _                             
-                (_____ \                 | |                            
-                 _____) )_____ _   _ ___ | |  _ _____                   
-                |  __  /| ___ | | | / _ \| |_/ ) ___ |  _____           
-                | |  \ \| ____|\ V / |_| |  _ (| ____| (_____)          
-                |_|   |_|_____) \_/ \___/|_| \_)_____)                  
-         _______ _       ___                              _             
-        (_______) |     / __)                         _  (_)            
-         _     _| |__ _| |__ _   _  ___  ____ _____ _| |_ _  ___  ____  
-        | |   | |  _ (_   __) | | |/___)/ ___|____ (_   _) |/ _ \|  _ \ 
+                 ______                   _
+                (_____ \                 | |
+                 _____) )_____ _   _ ___ | |  _ _____
+                |  __  /| ___ | | | / _ \| |_/ ) ___ |  _____
+                | |  \ \| ____|\ V / |_| |  _ (| ____| (_____)
+                |_|   |_|_____) \_/ \___/|_| \_)_____)
+         _______ _       ___                              _
+        (_______) |     / __)                         _  (_)
+         _     _| |__ _| |__ _   _  ___  ____ _____ _| |_ _  ___  ____
+        | |   | |  _ (_   __) | | |/___)/ ___|____ (_   _) |/ _ \|  _ \
         | |___| | |_) )| |  | |_| |___ ( (___/ ___ | | |_| | |_| | | | |
          \_____/|____/ |_|  |____/(___/ \____)_____|  \__)_|\___/|_| |_|
 "@
@@ -1729,7 +1730,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Show-Menu displays help menu for Revoke-Obfuscation.
@@ -1747,13 +1748,13 @@ This is a personal project developed by Daniel Bohannon and Lee Holmes while emp
 http://www.danielbohannon.com
 http://www.leeholmes.com/blog/
 #>
-    
+
     # Show Home Menu.
     Write-Host "`n`nMENU" -NoNewLine -ForegroundColor Cyan
     Write-Host " :: Available" -NoNewLine
     Write-Host " options" -NoNewLine -ForegroundColor Yellow
     Write-Host " shown below:`n"
-    
+
     # Define menu options and descriptions (with <> for secondary color coding in output).
     $menuOptions  = @()
     $menuOptions += , @('TUTORIAL' , '<Tutorial> for those who are anti-README')
@@ -1761,7 +1762,7 @@ http://www.leeholmes.com/blog/
     $menuOptions += , @('ASCII'    , 'Random <ASCII Art> hand-picked from the corpus')
     $menuOptions += , @('QUOTES'   , 'Set of Fun <Quotes>')
     $menuOptions += , @('CREDITS'  , '<Credits> for those involved in this research')
-    
+
     # Display each $menoOption defined above.
     foreach ($menuOption in $menuOptions)
     {
@@ -1779,7 +1780,7 @@ http://www.leeholmes.com/blog/
             $MiddlePart = $optionDescription.Substring($FirstPart.Length+1)
             $MiddlePart = $MiddlePart.Substring(0,$MiddlePart.IndexOf('>'))
             $LastPart   = $optionDescription.Substring($FirstPart.Length+$MiddlePart.Length+2)
-            
+
             Write-Host "$FirstPart" -NoNewLine
             Write-Host $MiddlePart -NoNewLine -ForegroundColor Cyan
             Write-Host $LastPart
@@ -1804,7 +1805,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Show-Tutorial displays tutorial information for Revoke-Obfuscation.
@@ -1822,13 +1823,13 @@ This is a personal project developed by Daniel Bohannon and Lee Holmes while emp
 http://www.danielbohannon.com
 http://www.leeholmes.com/blog/
 #>
-    
+
     Write-Host "`n`nTUTORIAL" -NoNewLine -ForegroundColor Cyan
     Write-Host " :: Here is a quick tutorial showing you how to " -NoNewLine
     Write-Host "Revoke " -NoNewLine -ForegroundColor Green
     Write-Host "some " -NoNewLine
     Write-Host "Obfuscation" -ForegroundColor Green
-    
+
     Write-Host "`nThis " -NoNewLine
     Write-Host "Revoke-Obfuscation" -NoNewline -ForegroundColor Yellow
     Write-Host " function is strictly for viewing this tutorial, ASCII art, & fun facts about this research. There are really only two main functions that you will use from this framework: " -NoNewline
@@ -1847,11 +1848,11 @@ http://www.leeholmes.com/blog/
     Write-Host "This function can be used to extract PowerShell scripts and script blocks from EID 4104 script block events found in the " -NoNewLine
     Write-Host "Microsoft-Windows-PowerShell/Operational " -NoNewLine -ForegroundColor Yellow
     Write-Host "event log (which we are sure that ALL defenders have enabled and are centrally aggregating by now since it's the year $((Get-Date).ToString('yyyy'))). It will reassemble scripts spread across numerous event records and return the results (enriched with metadata) as a PSCustomObject."
-    
+
     Write-Host "`n    EXAMPLE 1 (Querying local event log):" -ForegroundColor Cyan
     Write-Host "    Get-WinEvent -LogName Microsoft-Windows-PowerShell/Operational | " -NoNewLine -ForegroundColor Magenta
     Write-Host "Get-RvoScriptBlock " -ForegroundColor Yellow
-    
+
     Write-Host "`n    EXAMPLE 2 (Querying .evtx files):" -ForegroundColor Cyan
     Write-Host "    Get-ChildItem .\Demo\*.evtx | " -NoNewLine -ForegroundColor Magenta
     Write-Host "Get-RvoScriptBlock " -ForegroundColor Yellow
@@ -1860,12 +1861,12 @@ http://www.leeholmes.com/blog/
     Write-Host ":: " -NoNewLine
     Write-Host "Measure-RvoObfuscation" -ForegroundColor Yellow
     Write-Host "This function is the heart and soul of this framework for detecting obfuscated PowerShell scripts/commands. Simply pipeline into or point the function to PowerShell scripts, commands or Get-RvoScriptBlock results."
-    
+
     Write-Host "`n    EXAMPLE 1 (URL):" -ForegroundColor Cyan
     Write-Host "    `$obfResults = " -NoNewLine -ForegroundColor Magenta
     Write-Host "Measure-RvoObfuscation " -NoNewLine -ForegroundColor Yellow
     Write-Host "-Url 'http://bit.ly/DBOdemo1' -Verbose" -ForegroundColor Magenta
-    
+
     Write-Host "`n    EXAMPLE 2 (Directory of scripts):" -ForegroundColor Cyan
     Write-Host "    `$obfResults = Get-Content -Path .\Demo\DBOdemo*.ps1 -Raw | " -NoNewLine -ForegroundColor Magenta
     Write-Host "Measure-RvoObfuscation " -NoNewLine -ForegroundColor Yellow
@@ -1884,14 +1885,14 @@ http://www.leeholmes.com/blog/
     Write-Host "-OutputToDisk " -NoNewLine -ForegroundColor Yellow
     Write-Host "switch is used then OBFUSCATED results will be output to .\Results\Obfuscated\, but all results (obfuscated, not obfuscated and whitelisted) will be included in the PSCustomObject returned by Measure-RvoObfuscation. Check out all of the metadata returned in " -NoNewline
     Write-Host "`$obfResults" -ForegroundColor Magenta
-    
+
     Write-Host "`nWHITELISTING" -NoNewLine -ForegroundColor Cyan
     Write-Host " :: " -NoNewline
     Write-Host "Finally, there are three whitelisting options built into the framework in two different locations:"
-    
+
     Write-Host "`n    1) " -NoNewLine -ForegroundColor Cyan
     Write-Host "On Disk (automatically applied if present):"
-    
+
     Write-Host "        A) " -NoNewline -ForegroundColor Cyan
     Write-Host ".\Whitelist\Scripts_To_Whitelist\ " -NoNewline -ForegroundColor Yellow
     Write-Host "-- Scripts in this directory are whitelisted by hash."
@@ -1904,7 +1905,7 @@ http://www.leeholmes.com/blog/
 
     Write-Host "`n    2) " -NoNewLine -ForegroundColor Cyan
     Write-Host "Arguments for Measure-RvoObfuscation (applied in addition to above whitelisting options):"
-    
+
     Write-Host "        A) " -NoNewline -ForegroundColor Cyan
     Write-Host "-WhitelistFile .\files\*.ps1,.\more_files\*.ps1,.\one_more_file.ps1" -ForegroundColor Yellow
     Write-Host "        B) " -NoNewline -ForegroundColor Cyan
@@ -1932,7 +1933,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Show-FunFact is a helper function for displaying randomly fun facts about this research, PowerShell in general, plus some select Lee Holmes trolls.
@@ -1950,21 +1951,21 @@ This is a personal project developed by Daniel Bohannon and Lee Holmes while emp
 http://www.danielbohannon.com
 http://www.leeholmes.com/blog/
 #>
-    
+
     # Define fun facts below (with <> for secondary color coding in output).
     $funFacts  = @()
-    
+
     # Fun facts relating to Revoke-Obfuscation research project.
     $funFacts += "The PowerShell corpus used in this research contains <408,665> PowerShell scripts."
     $funFacts += "The PowerShell corpus was scraped from <9> public sources:`n            1) <GitHub> (381,586)`n            2) <GitHubGist> (1,732)`n            3) <PoshCode> (3,402)`n            4) <PowerShell Gallery> (15,768)`n            5) <Technet> (1,526)`n            6) <Underhanded PowerShell> (383)`n            7) <Invoke-Obfuscation> (3,280)`n            8) <Invoke-CradleCrafter> (200)`n            9) <ISESteroids> (788)"
     $funFacts += "Every invocation of Revoke-Obfuscation's <Get-RvoFeatureVector> function extracts <4,098> attributes from the input PowerShell script."
-    
+
     # PowerShell fun facts.
     $funFacts += "Before being named <PowerShell> on April 25, 2006, the language's code name was <Monad> and its first public beta release was on <June 17, 2005>."
     $funFacts += "PowerShell <File Extensions> include:`n            1) <PS1> - Windows PowerShell shell script`n            2) <PSD1> - Windows PowerShell data file (for Version 2)`n            3) <PSM1> - Windows PowerShell module file (for Version 2)`n            4) <PS1XML> - Windows PowerShell format and type definitions`n            5) <CLIXML> - Windows PowerShell serialized data`n            6) <PSC1> - Windows PowerShell console file`n            7) <PSSC> - Windows PowerShell Session Configuration file"
     $funFacts += "<Module Logging> was introduced in PowerShell <3.0>, and PowerShell has continued to sweeten the pot for the DFIR community with numerous logging features in PowerShell 5.0+ like <Transcription Logging> and <Script Block Logging>."
     $funFacts += "On <April 17, 2017>, Microsoft announced that PowerShell is officially replacing Command Prompt as the default command shell for File Explorer."
-    
+
     # GitHub contributor name fun facts.
     $funFacts += "Here are some interesting GitHub contributor names containing '<PowerShell>':`n            1) <IHeartPowerShell>`n            2) <justpowershell>`n            3) <PowerShellCrack>`n            4) <PowershellIsAmazing>"
     $funFacts += "Amongst all GitHub projects containing PowerShell code, there is only <one> contributor name with '<Bohannon>': <danielbohannon>"
@@ -1972,30 +1973,30 @@ http://www.leeholmes.com/blog/
     $funFacts += "The PowerShell corpus contains <969> unique contributors of PowerShell scripts in GitHubGist."
     $funFacts += "The PowerShell corpus contains <27,421> unique contributors of PowerShell scripts in GitHub."
     $funFacts += "The PowerShell corpus contains <658> contributors that have contributed to BOTH GitHub and GitHubGist."
-    
+
     # GitHubGist file attribute fun facts.
     $funFacts += "The average size of all PowerShell scripts on GitHubGist is <2,278.08246828143 bytes>."
     $funFacts += "The smallest PowerShell script on GitHubGist is <15 bytes> and simply contains the 10 characters '<$ git init>': <https://gist.github.com/matiasherranz-santex/9785941> (gistfile1.ps1)"
     $funFacts += "The largest PowerShell script on GitHubGist is <91,942 bytes> and <1,076 lines>: <https://gist.github.com/tanaka-takayoshi/8066817> (Claudia.ps1)"
     $funFacts += "The PowerShell script with the most lines (<1,136 lines>) on GitHubGist is: <https://gist.github.com/smasterson/25862683c8f822917177> (Get-VMHostInfo.ps1)"
     $funFacts += "The average line count for PowerShell scripts on GitHubGist is <63.0922722029988 lines>."
-    
+
     # GitHub file attribute fun facts.
     $funFacts += "The average size of all PowerShell scripts on GitHub is <19,877.355819969 bytes>."
     $funFacts += "The largest PowerShell script on GitHub is <2,213,517 bytes> and <2,884 lines>: <https://github.com/kureeoffsec/nopenopenope/blob/master/GetUserSpns.psm1> (141 lines of Get-UserSpns followed by Invoke-Mimikatz)"
     $funFacts += "The PowerShell script with the most lines (<86,770 lines>) on GitHub is: <https://github.com/byu-oit/exchangemanagment-web-services/blob/master/ExchangeAPIv2.0/ExchangeAPIv2.0/ExchangeModule/ExchangeModule.psm1> (Export-PSSession result)"
     $funFacts += "The average line count for PowerShell scripts on GitHub is <583.708096697995 lines>."
-    
+
     # GitHub vs GitHubGist file attribute fun facts.
     $funFacts += "The average PowerShell script on GitHub has <8.72547684147903> times as many bytes as the average PowerShell script on GitHubGist."
     $funFacts += "The average PowerShell script on GitHub has <9.25165755355774> times as many lines as the average PowerShell script on GitHubGist."
     $funFacts += "The largest PowerShell script on GitHub has <24.0751452002349> times as many bytes as the largest PowerShell script on GitHubGist."
     $funFacts += "The largest (in terms of lines) PowerShell script on GitHub has <76.3820422535211> times as many lines as the largest (in terms of lines) PowerShell script on GitHubGist."
-    
+
     # Lee Holmes trolls.
     $funFacts += "Whatever function one writes in PowerShell, Lee Holmes can write it in <100x fewer lines> and <1,000x fewer characters>."
     $funFacts += "Although <Lee Holmes> wrote '<Windows PowerShell Cookbook>', Amazon also lists him as the author of '<Super Foods Eat Your Way to Good Health>' (not even kidding, check this out: <https://www.amazon.com/Super-Foods-Your-Good-Health/dp/1435142055/>)."
-    
+
     # Randomly select and display a fun fact from above $funFacts array.
     $randomIndex = Get-Random -InputObject @(0..($funFacts.Count - 1))
     $randomFunFact = $funFacts[$randomIndex]
@@ -2008,10 +2009,10 @@ http://www.leeholmes.com/blog/
     {
         $firstHalf  = $randomFunFact.Substring(0,$randomFunFact.IndexOf('<'))
         $secondHalf = $randomFunFact.Substring($randomFunFact.IndexOf('<') + 1)
-        
+
         Write-Host $firstHalf -NoNewline -ForegroundColor Green
         Write-Host $secondHalf.SubString(0,$secondHalf.IndexOf('>')) -NoNewLine -ForegroundColor Yellow
-        
+
         # Set remaining string as $funFact.
         $randomFunFact = $secondHalf.SubString($secondHalf.IndexOf('>') + 1)
     }
@@ -2031,7 +2032,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Show-Credit is a helper function for displaying randomly-selected GitHub contributors as a "thank-you" for unknowingly contributing to this research via their public PowerShell scripts.
@@ -2049,7 +2050,7 @@ This is a personal project developed by Daniel Bohannon and Lee Holmes while emp
 http://www.danielbohannon.com
 http://www.leeholmes.com/blog/
 #>
-    
+
     Write-Host "`n`nCREDITS " -NoNewline -ForegroundColor Cyan
     Write-Host ":: " -NoNewLine
     Write-Host "Daniel Bohannon " -NoNewLine -ForegroundColor Yellow
@@ -2104,7 +2105,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Show-Quote is a helper function for displaying a fun set of quotes that would make any dad joke green with envy.
@@ -2128,12 +2129,12 @@ $quotes = @'
       """"    """"    """"""  """"""
      """     """      """"""  """"""
     """     """       """"""  """"""
-    """"""  """"""       """     """ 
-    """"""  """"""      """     """ 
-    """"""  """"""    """"    """"  
-    """"""  """"""    ""      ""    
+    """"""  """"""       """     """
+    """"""  """"""      """     """
+    """"""  """"""    """"    """"
+    """"""  """"""    ""      ""
 '@
-    
+
     Write-Host "`n`n$quotes" -ForegroundColor (Get-Random -InputObject @('Green','Cyan'))
 }
 
@@ -2150,7 +2151,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Show-Ascii is a helper function for displaying fun ASCII art retrieved from the PowerShell corpus.
@@ -2183,8 +2184,8 @@ http://www.leeholmes.com/blog/
     $asciiArray += , @('https://github.com/cantbraintoday/powershell/blob/master/SpeakToMe.ps1',"        .-. __ _ .-.`n        |    / \  |`n        /     '.()--\`n       |         '._/`n      _| O   _   O |_`n      =\    '-'    /=`n        '-._____.-'`n        //\___/\\`n       /\/o     o\/\`n      (_|         |_)`n        |____,____|`n        (____|____)`n`n        Hello World")
     $asciiArray += , @('https://github.com/codyhosterman/powercli/blob/master/bestpracticechecker.ps1',"             __________________________`n            /++++++++++++++++++++++++++\`n           /++++++++++++++++++++++++++++\`n          /++++++++++++++++++++++++++++++\`n         /++++++++++++++++++++++++++++++++\`n        /++++++++++++++++++++++++++++++++++\`n       /++++++++++++/----------\++++++++++++\`n      /++++++++++++/            \++++++++++++\`n     /++++++++++++/              \++++++++++++\`n    /++++++++++++/                \++++++++++++\`n   /++++++++++++/                  \++++++++++++\`n   \++++++++++++\                  /++++++++++++/`n    \++++++++++++\                /++++++++++++/`n     \++++++++++++\              /++++++++++++/`n      \++++++++++++\            /++++++++++++/`n       \++++++++++++\          /++++++++++++/`n        \++++++++++++\`n         \++++++++++++\`n          \++++++++++++\`n           \++++++++++++\`n            \------------\")
     $asciiArray += , @('https://github.com/ComputerCrash0/BackupMyRegistry/blob/master/BackUpMyRegistry.ps1',"===================================================`n ____   ____    __ __  _ __ __ ____  ___ ___ __ __ `n|    \ /    |  /  ]  |/ ]  |  |    \|   |   |  |  |`n|  o  )  o  | /  /|  ' /|  |  |  o  ) _   _ |  |  |`n|     |     |/  / |    \|  |  |   _/|  \_/  |  ~  |`n|  O  |  _  /   \_|     \  :  |  |  |   |   |___, |`n|     |  |  \     |  .  |     |  |  |   |   |     |`n|_____|__|__|\____|__|\_|\__,_|__|  |___|___|____/ `n ____    ___  ____ ____ ___________ ____  __ __    `n|    \  /  _]/    |    / ___/      |    \|  |  |   `n|  D  )/  [_|   __||  (   \_|      |  D  )  |  |   `n|    /|    _]  |  ||  |\__  |_|  |_|    /|  ~  |   `n|    \|   [_|  |_ ||  |/  \ | |  | |    \|___, |   `n|  .  \     |     ||  |\    | |  | |  .  \     |   `n|__|\_|_____|___,_|____|\___| |__| |__|\_|____/    `n===================================================")
-    $asciiArray += , @('https://github.com/czadd/git/blob/master/GitAliases.ps1',"                     __,-~~/~    ---.                   `n                   _/_,---(      ,    )                  `n                __ /        <    /   )  \___             `n               ====------------------===;;;==            `n                   \/  ~ ~ ~ ~ ~ ~\~ ~)~ ,1/             `n                   (_ (   \  (     >    \)               `n                    \_( _ \<         >_>'                `n                       ~ -i' ::>/--'                    `n                           I;|.|.|                       `n                          <|i::|i|>                      `n                           |[::|.|                       `n                            ||: |                        `n _________________________GROUND ZERO___________________ ") 
-    $asciiArray += , @('https://github.com/ebc92/service-migration-azure/blob/develop/Master.ps1',"        One script to rule them all`n`n               Three::modules`n          for:::the::Elven-Kings`n       under:the:sky,:Seven:for:the`n     Dwarf-Lords::in::their::halls:of`n    stone,:Nine             for:Mortal`n   :::Men:::     ________     doomed::to`n die.:One   _,-'...:... -.    for:::the`n ::Dark::  ,- .:::::::::::. .   Lord::on`nhis:dark ,'  .:::::zzz:::::.  .  :throne::`nIn:::the/    ::::dMMMMMb::::    \ Land::of:`n:Mordor:\    ::::dMMmgJP::::    / :where::::`n::the::: '.  '::::YMMMP::::'  ,'   Shadows:`n lie.::One . ````````:::::::::'' ,'    :Script:`n to:rule:    -._````````:'''_,-'     ::them::`n all,::One      -----'        Script:to`n   ::find:::                  them,:One`n    Script:::to            bring::them`n      all::and::in:the:darkness:bind`n        them:In:the:Land:of:Mordor`n           where:::the::Shadows`n                :::lie.:::") 
+    $asciiArray += , @('https://github.com/czadd/git/blob/master/GitAliases.ps1',"                     __,-~~/~    ---.                   `n                   _/_,---(      ,    )                  `n                __ /        <    /   )  \___             `n               ====------------------===;;;==            `n                   \/  ~ ~ ~ ~ ~ ~\~ ~)~ ,1/             `n                   (_ (   \  (     >    \)               `n                    \_( _ \<         >_>'                `n                       ~ -i' ::>/--'                    `n                           I;|.|.|                       `n                          <|i::|i|>                      `n                           |[::|.|                       `n                            ||: |                        `n _________________________GROUND ZERO___________________ ")
+    $asciiArray += , @('https://github.com/ebc92/service-migration-azure/blob/develop/Master.ps1',"        One script to rule them all`n`n               Three::modules`n          for:::the::Elven-Kings`n       under:the:sky,:Seven:for:the`n     Dwarf-Lords::in::their::halls:of`n    stone,:Nine             for:Mortal`n   :::Men:::     ________     doomed::to`n die.:One   _,-'...:... -.    for:::the`n ::Dark::  ,- .:::::::::::. .   Lord::on`nhis:dark ,'  .:::::zzz:::::.  .  :throne::`nIn:::the/    ::::dMMMMMb::::    \ Land::of:`n:Mordor:\    ::::dMMmgJP::::    / :where::::`n::the::: '.  '::::YMMMP::::'  ,'   Shadows:`n lie.::One . ````````:::::::::'' ,'    :Script:`n to:rule:    -._````````:'''_,-'     ::them::`n all,::One      -----'        Script:to`n   ::find:::                  them,:One`n    Script:::to            bring::them`n      all::and::in:the:darkness:bind`n        them:In:the:Land:of:Mordor`n           where:::the::Shadows`n                :::lie.:::")
     $asciiArray += , @('https://github.com/FuzzySecurity/PSKernel-Primitives/blob/master/Sample-Exploits/Capcom/CapCom-GDI-x64Universal.ps1',"+---------------------------------------------------+`n|           \                          ___/________ |`n|      ___   )          ,  @             /    \  \  |`n|   @___, \ /        @__\  /\       @___/      \@/  |`n|  /\__,   |        /\_, \/ /      /\__/        |   |`n| / \    / @\      / \   (        / \ /        / \  |`n|/__|___/___/_____/__|____\______/__/__________|__\_|`n|                                                   |`n|                 Street Fighter V                  |`n|            Capcom.sys LPE => 7-10 x64             |`n|                                                   |`n|                                 ~b33f (@FuzzySec) |`n+---------------------------------------------------+")
     $asciiArray += , @('https://github.com/icequick/SN-Edge-Mass-Update/blob/master/SN-Edge-Mass-Upload.ps1',"                            ,===     -Help us Obi-Wan Kenobi...`n                           (@o o@`n                          / \_-/       ___`n                         /| |) )      /() \`n                        |  \ \/__   _|_____|_`n                        |   \____@=| | === | |`n                        |   |      |_|  O  |_|`n                        | | |       ||  O  ||`n                        | | |       ||__*__||`n                       /  |  \     |~ \___/ ~|`n                       ~~~~~~~     /=\     /=\`n_______________________(_)(__\_____[_]_____[_]_____________________")
     $asciiArray += , @('https://github.com/jdhitsolutions/PSChristmas/blob/master/PSChristmasFunctions.ps1',"           *             ,`n                       _/^\_`n                      <     >`n     *                 /.-.\         *`n              *        ``/&\``                   *`n                      ,@.*;@,`n                     /_o.I %_\    *`n        *           (``'--:o(_@;`n                   /``;--.,__ ``')             *`n                  ;@``o % O,*``'``&\`n            *    (``'--)_@ ;o %'()\      *`n                 /``;--._``''--._O'@;`n                /&*,()~o``;-.,_ `"`"``)`n     *          /``,@ ;+& () o*``;-';\`n               (`"`"--.,_0 +% @' &()\`n               /-.,_    ````''--....-'``)  *`n          *    /@%;o``:;'--,.__   __.'\`n              ;*,&(); @ % &^;~`"``o;@();         *`n              /(); o^~; & ().o@*&``;&%O\`n              `"=`"==`"`"==,,,.,=`"==`"===`"`n           __.----.(\-''#####---...___...-----._`n         '``         \)_`"`"`"`"`"`n                 .--' ')`n               o(  )_-\`n                 `"`"`"`` ")
@@ -2199,7 +2200,7 @@ http://www.leeholmes.com/blog/
     $asciiArray += , @('https://github.com/texhex/BiosSledgehammer/blob/master/BiosSledgehammer.ps1',"`n            _`n    jgs   ./ |`n         /  /    BIOS Sledgehammer Version @@VERSION@@`n       /'  /     Copyright (c) 2015-2017 Michael 'Tex' Hex`n      /   /`n     /    \      https://github.com/texhex/BiosSledgehammer`n    |      ``\`n    |        |                                ___________________`n    |        |___________________...-------'''- - -  =- - =  - = ``.`n   /|        |                   \-  =  = -  -= - =  - =-   =  - =|`n  ( |        |                    |= -= - = - = - = - =--= = - = =|`n   \|        |___________________/- = - -= =_- =_-=_- -=_=-=_=_= -|`n    |        |                   ``````-------...___________________.'`n    |________|`n      \    /     This is *NOT* sponsored/endorsed by HP or Intel.`n      |    |     This is *NOT* an official HP or Intel tool.`n    ,-'    ``-,`n    |        |   Use at your own risk.`n    ``--------'")
     $asciiArray += , @('https://github.com/Wrexthor/Conan-Menu/blob/master/Conan-Menu.ps1',"                .v~`n               .(W`n              /<M.`n\~b__________/$@|\----------------------------------------------------------.`n >@)`$`$`$`$`$`$`$`$(`$( )#H>====================================================----->`n/_p~~~~~~~~~~\`$@|/----------------------------------------------------------'`n              \<M```n               ``(B`n                 ``?_`n")
     $asciiArray += , @('https://github.com/vScripter/Chester/blob/master/Chester/Chester.psm1',"                             `````````````````````````````````` `n                       ``.-://///////////////////::.`n                     ``-///-...``````````````````````````````..-:///-`n                    ``://-                         -//:`n                    -//.                           .//-`n                    ://``                           ``//:`n                    ://``                           ``//:`n                    ://``                           ``//:`n                    ://``                           ``//:`n                  ````://``                           ``//:`n            ``.-:://////``                           ``/////::-.`n         ``-:///:--.``://.                           .//:.--:///:-`n        ``//:-``      .:////::::----------------:::////:.     ``-//:`n        ``//:.``        ``..----:::::::::::::::::----..``       ``-//:`n         ``-:///:-..````                                ````.--:///:.`n            ``.-:://////:::----..............----:::///////:-.`n                ``///..---::::://////////////:::::---..``///`n                 ://.                                 .//:`n               ``://-``                    .-:///:-.````````.://:`n               -//.      ``--------.    ``://:-.-:///////////-`n               -//.      -:///////:``   ://.     .//:````````-//-`n               .//:         ``::-      ``///      ``//:    ://.`n                ://.                   -//:``   .://.   .//:`n                ``://:.                  .:///////:.  .://:`n                  .//:                    ``..-..``    ://.`n                   ://``                             ``//:`n                   .//:          .-::--:-.          ://.`n                    -//-        -//:://://:        -//-`n                     ://.   ....://`` ``  ://.``.-``  .//:`n                     ``://`` ``:////:.     ``://///- ``//:`n                      ``://.  ````````          ``````  .//:`n                       ``///:.                 .:///`n                        //////-.           .-//////`n                       .//-``.:///:-.-----:///:.``-//.`n                 ````.--:///``   ``.-:///////:-.``   ``///:--..```` `n           ``.--://///::://:.``      ``///``      ``.://::://///::-.`n       ``.-:///:--.````    ``-///:.``    ///    ``.:///-``     ``..-:////:-`n    ``.:///:-``              .-:///::-///-::////-.              ``.-://:-`n  ``-///-.                     ``.--::///::--.``                     ``-://:.`n ``//:.                              ///                              .://.`n ``//:                               ///                               -//.`n  .///::---..````````                   ///                   ``````...---::///-`n    ..--:://///////:::::----------..///.-----------:::://////////::--..`n            ``````...-----:::::::///////////////:::::::----....```` `n`n`n  ______  __    __   _______     _______.___________. _______ .______`n /      ||  |  |  | |   ____|   /       |           ||   ____||   _  \`n|  ,----'|  |__|  | |  |__     |   (----``---|  |----``|  |__   |  |_)  |`n|  |     |   __   | |   __|     \   \       |  |     |   __|  |      /`n|  ``----.|  |  |  | |  |____.----)   |      |  |     |  |____ |  |\  \----.`n \______||__|  |__| |_______|_______/       |__|     |_______|| _| ``._____|")
-    
+
     # Display random ASCII art from handpicked favorites from PowerShell corpus.
     Write-Host "`n`nASCII ART " -NoNewline -ForegroundColor Cyan
     Write-Host ":: " -NoNewline
@@ -2209,7 +2210,7 @@ http://www.leeholmes.com/blog/
 
     # Display URL to script containing this ASCII art.
     Write-Host "             $($randomAscii[0])`n" -ForegroundColor Yellow
-    
+
     # Display ASCII art.
     Write-Host $randomAscii[1] -ForegroundColor Green
 }
@@ -2227,7 +2228,7 @@ Authors: Daniel Bohannon (@danielhbohannon) and Lee Holmes (@Lee_Holmes)
 License: Apache License, Version 2.0
 Required Dependencies: None
 Optional Dependencies: None
- 
+
 .DESCRIPTION
 
 Revoke-Obfuscation is simply for displaying animated ASCII art as well as a tutorial and other fun facts about this research and framework.
@@ -2248,7 +2249,7 @@ http://www.leeholmes.com/blog/
 
     # Show ASCII art for introduction.
     Show-AsciiIntro
-    
+
     # Show menu once before entering into interactive loop.
     Show-Menu
 
@@ -2262,7 +2263,7 @@ http://www.leeholmes.com/blog/
 
         # Define valid options for outputting in below switch block if an invalid option is input.
         $validOptions = @('TUTORIAL','FUNFACTS','ASCII','QUOTES','CREDITS')
-        
+
         # Route user input to appropriate cmdlet or function.
         switch ($userInput)
         {

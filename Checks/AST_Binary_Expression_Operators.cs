@@ -10,7 +10,7 @@ public class GroupedBinaryExpressionOperators
     {
         // Initialize Dictionary with common array counts initialized to 0.
         Dictionary<String, Double> astGroupedBinaryExpressionOperatorsDictionary = new Dictionary<String, Double>(StringComparer.OrdinalIgnoreCase);
-        
+
         astGroupedBinaryExpressionOperatorsDictionary["And"] = 0;
         astGroupedBinaryExpressionOperatorsDictionary["Or"] = 0;
         astGroupedBinaryExpressionOperatorsDictionary["Is"] = 0;
@@ -63,9 +63,16 @@ public class GroupedBinaryExpressionOperators
         astGroupedBinaryExpressionOperatorsDictionary["Cnotin"] = 0;
         astGroupedBinaryExpressionOperatorsDictionary["Csplit"] = 0;
         astGroupedBinaryExpressionOperatorsDictionary["UNKNOWN"] = 0;
-        
+
         // Return all targeted AST objects by Count and Percent across the entire input AST object.
-        return RevokeObfuscationHelpers.AstValueGrouper(ast, typeof(BinaryExpressionAst), astGroupedBinaryExpressionOperatorsDictionary, "AstGroupedBinaryExpressionOperators",
-            targetAst => { return ((BinaryExpressionAst) targetAst).Operator.ToString(); } );
+        return RevokeObfuscationHelpers.AstValueGrouper(
+            ast,
+            typeof(BinaryExpressionAst),
+            astGroupedBinaryExpressionOperatorsDictionary,
+            "AstGroupedBinaryExpressionOperators",
+            targetAst => {
+                return ((BinaryExpressionAst)targetAst).Operator.ToString();
+            }
+        );
     }
 }
