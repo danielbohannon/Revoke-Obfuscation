@@ -11,7 +11,7 @@ public class GroupedAstTypes
     {
         // Initialize Dictionary with all known AST object types initialized to 0.
         Dictionary<String, Double> astTypeDictionary = new Dictionary<String, Double>(StringComparer.OrdinalIgnoreCase);
-        
+
         astTypeDictionary["Ast"] = 0;
         astTypeDictionary["SequencePointAst"] = 0;
         astTypeDictionary["ErrorStatementAst"] = 0;
@@ -90,7 +90,14 @@ public class GroupedAstTypes
         astTypeDictionary["UNKNOWN"] = 0;
 
         // Return all targeted AST objects by Count and Percent across the entire input AST object.
-        return RevokeObfuscationHelpers.AstValueGrouper(ast, typeof(Ast), astTypeDictionary, "AstGroupedAstTypes",
-            targetAst => { return ((Ast) targetAst).GetType().FullName.Replace("System.Management.Automation.Language.","").Replace("System.",""); } );
+        return RevokeObfuscationHelpers.AstValueGrouper(
+            ast,
+            typeof(Ast),
+            astTypeDictionary,
+            "AstGroupedAstTypes",
+            targetAst => {
+                return ((Ast)targetAst).GetType().FullName.Replace("System.Management.Automation.Language.","").Replace("System.","");
+            }
+        );
     }
 }

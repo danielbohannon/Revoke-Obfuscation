@@ -16,15 +16,15 @@ public class ConvertToPowerShellExpression
         Console.Write(args[0] + " ");
 
         // Process the arguments
-        for(int arg = 1; arg < args.Length; arg++)
+        for (int arg = 1; arg < args.Length; arg++)
         {
-            if(Regex.IsMatch(args[arg], encodedCommandRegex, RegexOptions.IgnoreCase))
+            if (Regex.IsMatch(args[arg], encodedCommandRegex, RegexOptions.IgnoreCase))
             {
                 // Transform EncodedCommand
                 foundCommand = true;
                 string encodedCommandText = args[arg + 1];
-
                 string newCommandText;
+
                 try
                 {
                     newCommandText= System.Text.Encoding.Unicode.GetString(Convert.FromBase64String(encodedCommandText));
@@ -33,11 +33,11 @@ public class ConvertToPowerShellExpression
                 {
                     newCommandText = "'<Not valid Base64. Original: " + encodedCommandText + ">'";
                 }
-                
+
                 Console.Write("-DecodedFromBase64Command  {" + newCommandText + "}");
-                arg ++;
+                arg++;
             }
-            else if(Regex.IsMatch(args[arg], commandRegex, RegexOptions.IgnoreCase))
+            else if (Regex.IsMatch(args[arg], commandRegex, RegexOptions.IgnoreCase))
             {
                 // Emit -Command when named
                 foundCommand = true;
@@ -48,19 +48,19 @@ public class ConvertToPowerShellExpression
 
                 Console.Write(originalCommand + " { " + command + " }");
             }
-            else if(Regex.IsMatch(args[arg], parameterWithArgumentRegex, RegexOptions.IgnoreCase))
+            else if (Regex.IsMatch(args[arg], parameterWithArgumentRegex, RegexOptions.IgnoreCase))
             {
                 Console.Write(args[arg] + " " + args[++arg]);
             }
             else
             {
                 // Emit the implicit "-Command"
-                if(
+                if (
                     // If we're at the end and haven't found -Command
                     ((arg == args.Length - 1) && (! foundCommand)) ||
-
                     // Our first parameter that does not look like a known parameter
-                    (! Regex.IsMatch(args[arg], paramRegex, RegexOptions.IgnoreCase)))
+                    (! Regex.IsMatch(args[arg], paramRegex, RegexOptions.IgnoreCase))
+                )
                 {
                     Console.Write("{ " + collectArguments(args, arg - 1) + " }");
                     arg = args.Length;
@@ -71,7 +71,7 @@ public class ConvertToPowerShellExpression
                 }
             }
 
-            if(arg < args.Length - 1)
+            if (arg < args.Length - 1)
             {
                 Console.Write(" ");
             }
@@ -86,13 +86,13 @@ public class ConvertToPowerShellExpression
         {
             currentIndex++;
             command += args[currentIndex];
-            
-            if(currentIndex < args.Length - 1)
+
+            if (currentIndex < args.Length - 1)
             {
                 command += " ";
             }
 
-        } while(currentIndex < args.Length - 1);
+        } while (currentIndex < args.Length - 1);
 
         return command;
    }

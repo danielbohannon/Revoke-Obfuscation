@@ -10,11 +10,12 @@ public class CmdletMetrics
     {
         // Build string list of all AST object values that will be later sent to StringMetricCalculator.
         List<String> stringList = new List<String>();
-        
-        foreach(CommandAst targetAst in ast.FindAll( testAst => testAst is CommandAst, true ))
+
+        foreach (CommandAst targetAst in ast.FindAll(testAst => testAst is CommandAst, true))
         {
             // Extract the AST object value.
-            // If InvocationOperator is "Unknown" then the cmdlet will be the first object in CommandElements (i.e. most likely a cmdlet like Invoke-Expression, Write-Output, etc.).
+            // If InvocationOperator is "Unknown" then the cmdlet will be the first object in CommandElements.
+            // (i.e. most likely a cmdlet like Invoke-Expression, Write-Output, etc.)
             // Otherwise it will be the name of the invocation operator.
             string cmdlet = null;
             if(targetAst.InvocationOperator.ToString() == "Unknown")
@@ -31,10 +32,9 @@ public class CmdletMetrics
                     default : cmdlet = "?"; break;
                 }
             }
-            
             stringList.Add(cmdlet);
         }
-        
+
         // Return character distribution and additional string metrics across all targeted AST objects across the entire input AST object.
         return RevokeObfuscationHelpers.StringMetricCalculator(stringList, "AstCmdletMetrics");
     }

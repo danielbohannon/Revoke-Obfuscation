@@ -11,15 +11,15 @@ public class StringMetrics
         // Build string list of all AST object values that will be later sent to StringMetricCalculator.
         List<String> stringList = new List<String>();
 
-        foreach(StringConstantExpressionAst targetAst in ast.FindAll( testAst => testAst is StringConstantExpressionAst, true ))
+        foreach (StringConstantExpressionAst targetAst in ast.FindAll(testAst => testAst is StringConstantExpressionAst, true))
         {
-            if(targetAst.StringConstantType.ToString() != "BareWord")
+            if (targetAst.StringConstantType.ToString() != "BareWord")
             {
                 // Extract the AST object value.
                 String targetName = targetAst.Extent.Text.Replace("\n","");
-                
+
                 // Trim off the leading and trailing single- or double-quote for the current string.
-                if(targetName.Length > 2)
+                if (targetName.Length > 2)
                 {
                     stringList.Add(targetName.Substring(1,targetName.Length-2));
                 }
@@ -29,7 +29,7 @@ public class StringMetrics
                 }
             }
         }
-        
+
         // Return character distribution and additional string metrics across all targeted AST objects across the entire input AST object.
         return RevokeObfuscationHelpers.StringMetricCalculator(stringList, "AstStringMetrics");
     }

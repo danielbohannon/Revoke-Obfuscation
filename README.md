@@ -15,6 +15,10 @@ Authors
 Daniel Bohannon ([@danielhbohannon](https://twitter.com/danielhbohannon))
 Lee Holmes ([@Lee_Homes](https://twitter.com/Lee_Holmes))
 
+Contributors
+-------
+[Dmitrii Vasilev](http://dmitriicodes.com)
+
 Research
 --------
 Blog Post: [https://www.fireeye.com/blog/threat-research/2017/07/revoke-obfuscation-powershell.html](https://www.fireeye.com/blog/threat-research/2017/07/revoke-obfuscation-powershell.html)
@@ -34,6 +38,8 @@ Since this exchange, Daniel and Lee became good friends and shared many common i
 The amount of time both Blue Teamers spent pouring over research and POC code would equate to several thousand cups of Chemex-brewed coffee assuming the proper 4-minute target brew time (assuming at least one other coffee enthusiast picked up on this "pour over" pun).
 
 Revoke-Obfuscation is the final hand-crafted product of these efforts.
+
+Most recent changes were implemented by Dmitrii Vasilev, as part of his work to improve the accuracy of Revoke-Obfuscation on modules submitted to the PowerShell Gallery.
 
 Purpose
 -------
@@ -74,10 +80,10 @@ If you need to reassemble and extract script block logs from PowerShell Operatio
 * `Get-ChildItem .\Demo\demo.evtx | Get-RvoScriptBlock -Verbose`
 * `Get-WinEvent -LogName Microsoft-Windows-PowerShell/Operational | Get-RvoScriptBlock -Verbose`
 
-`Get-RvoScriptBlock` also supports MIR/HX audit results as well as PowerShell 
-Operational logs retrieved via Matt Graeber's (@mattifestation) CimSweep project 
-(https://github.com/PowerShellMafia/CimSweep). For CimSweep there is a minor 
-registry tweak required to trick WMI into querying a non-classic event log. 
+`Get-RvoScriptBlock` also supports MIR/HX audit results as well as PowerShell
+Operational logs retrieved via Matt Graeber's (@mattifestation) CimSweep project
+(https://github.com/PowerShellMafia/CimSweep). For CimSweep there is a minor
+registry tweak required to trick WMI into querying a non-classic event log.
 Details can be found in the NOTES section of `Get-RvoScriptBlock`.
 
 * `Get-ChildItem C:\MirOrHxAuditFiles\*_w32eventlogs.xml | Get-RvoScriptBlock -Verbose`
@@ -96,19 +102,19 @@ A full example against local and remotely hosted test scripts can be found below
 The `-OutputToDisk` switch will automatically output all obfuscated scripts to .\Results\Obfuscated\. Regardless, all results will be returned as PSCustomObjects containing the script content along with metadata like an obfuscation score, measurement time, whitelisting result, all extracted script features, etc.
 
 Three whitelisting options exist in two locations in Revoke-Obfuscation:
-1. On Disk (automatically applied if present): 
-   1. **.\Whitelist\Scripts_To_Whitelist\\** -- All scripts placed in this directory will be hashed 
+1. On Disk (automatically applied if present):
+   1. **.\Whitelist\Scripts_To_Whitelist\\** -- All scripts placed in this directory will be hashed
 and any identical scripts will be whitelisted. This whitelisting method is preferred above the next two options.
-   1. **.\Whitelist\Strings_To_Whitelist.txt** -- A script containing ANY of the strings in this file 
+   1. **.\Whitelist\Strings_To_Whitelist.txt** -- A script containing ANY of the strings in this file
 will be whitelisted. *Syntax: Rule_Name,string_to_whitelist*
-   1. **.\Whitelist\Regex_To_Whitelist.txt** -- A script containing ANY of the regular expressions in 
+   1. **.\Whitelist\Regex_To_Whitelist.txt** -- A script containing ANY of the regular expressions in
 this file will be whitelisted. *Syntax: Rule_Name,regex_to_whitelist*
 1. Arguments for Measure-RvoObfuscation (applied in addition to above whitelisting options):
    1. **-WhitelistFile** -- `-WhitelistFile .\files\*.ps1,.\more_files\*.ps1,.\one_more_file.ps1`
    1. **-WhitelistContent** -- `-WhitelistContent 'string 1 to whitelist','string 2 to whitelist'`
    1. **-WhitelistRegex** -- `-WhitelistRegex 'regex 1 to whitelist','regex 2 to whitelist'`
 
-If interested in creating your own set of training data and generating a weighted vector for the Measure-Vector 
+If interested in creating your own set of training data and generating a weighted vector for the Measure-Vector
 function, then ModelTrainer.cs/ModelTrainer.exe can be executed against a labeled data set. The following command will extract feature vectors from all input scripts and aggregate them into a single CSV used in this training phase:
 
 	Get-ChildItem .\*.ps1 | ForEach-Object { [PSCustomObject](Get-RvoFeatureVector -Path $_.FullName) | Export-Csv .\all_features.csv -Append }
