@@ -390,7 +390,9 @@ http://www.leeholmes.com/blog/
                             New-Item -ItemType Directory -Path $resultObfuscatedDir -Force
                         }
                         
-                        $resultFile = "$resultObfuscatedDir\$hash.ps1"
+                        #$resultFile = "$resultObfuscatedDir\$hash.ps1"
+                        $fname = split-path $path -leaf
+                        $resultFile = "$resultObfuscatedDir\$fname"
                         Set-Content -Path $resultFile -Value $scriptContent -NoNewline
                     }
                     else
